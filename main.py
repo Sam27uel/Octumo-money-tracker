@@ -10,7 +10,7 @@ def main() -> None:
     initialize_database()
 
     app = QApplication(sys.argv)
-    app.setApplicationName("BudgetFlow")
+    app.setApplicationName("Octumo")
 
     window = MainWindow()
     window.show()

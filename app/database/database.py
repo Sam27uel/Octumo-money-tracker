@@ -4,7 +4,7 @@ import sqlite3
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIRECTORY = PROJECT_ROOT / "data"
-DATABASE_PATH = DATA_DIRECTORY / "budgetflow.db"
+DATABASE_PATH = DATA_DIRECTORY / "octumo.db"
 
 
 def get_connection() -> sqlite3.Connection:

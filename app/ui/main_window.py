@@ -6,7 +6,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
-        self.setWindowTitle("BudgetFlow")
+        self.setWindowTitle("Octumo")
         self.resize(1100, 700)
         self.setMinimumSize(900, 600)
 
@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(48, 48, 48, 48)
         layout.setSpacing(12)
 
-        title = QLabel("BudgetFlow")
+        title = QLabel("Octumo")
         title.setObjectName("title")
 
         subtitle = QLabel(
