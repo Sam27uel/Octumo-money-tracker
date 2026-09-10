@@ -1,0 +1,52 @@
+from pathlib import Path
+import sqlite3
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIRECTORY = PROJECT_ROOT / "data"
+DATABASE_PATH = DATA_DIRECTORY / "budgetflow.db"
+
+
+def get_connection() -> sqlite3.Connection:
+    DATA_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+
+    return connection
+
+
+def initialize_database() -> None:
+    with get_connection() as connection:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS accounts (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                starting_balance_cents INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
+                color TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(name, kind)
+            );
+
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY,
+                account_id INTEGER NOT NULL,
+                category_id INTEGER,
+                amount_cents INTEGER NOT NULL CHECK (amount_cents != 0),
+                transaction_date TEXT NOT NULL,
+                note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_id) REFERENCES accounts(id),
+                FOREIGN KEY (category_id) REFERENCES categories(id)
+            );
+            """
+        )
