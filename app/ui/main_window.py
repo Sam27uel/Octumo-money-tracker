@@ -95,11 +95,13 @@ class MainWindow(QMainWindow):
             lambda: self.pages.setCurrentIndex(4)
         )
 
+        # Main layout
         main_layout.addWidget(sidebar)
         main_layout.addWidget(self.pages)
 
         self.setCentralWidget(central_widget)
 
+        # Styling
         self.setStyleSheet(
             """
             QMainWindow {
@@ -139,6 +141,42 @@ class MainWindow(QMainWindow):
             }
 
             QLabel#page_subtitle {
+                color: #64748B;
+                font-size: 15px;
+            }
+
+            QPushButton#primary_button {
+                background-color: #0F172A;
+                color: #FFFFFF;
+                border-radius: 8px;
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+
+            QPushButton#primary_button:hover {
+                background-color: #1E293B;
+            }
+
+            QWidget#account_card {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+            }
+
+            QLabel#account_name {
+                color: #0F172A;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            QLabel#account_balance {
+                color: #0F172A;
+                font-size: 16px;
+                font-weight: 700;
+            }
+
+            QLabel#empty_state {
                 color: #64748B;
                 font-size: 15px;
             }
