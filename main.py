@@ -1,9 +1,21 @@
-from app.database.database import DATABASE_PATH, initialize_database
+import sys
+
+from PySide6.QtWidgets import QApplication
+
+from app.database.database import initialize_database
+from app.ui.main_window import MainWindow
 
 
 def main() -> None:
     initialize_database()
-    print(f"BudgetFlow database is ready: {DATABASE_PATH}")
+
+    app = QApplication(sys.argv)
+    app.setApplicationName("BudgetFlow")
+
+    window = MainWindow()
+    window.show()
+
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
