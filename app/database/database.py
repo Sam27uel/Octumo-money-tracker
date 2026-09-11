@@ -25,6 +25,7 @@ def initialize_database() -> None:
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 starting_balance_cents INTEGER NOT NULL DEFAULT 0,
+                is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -48,5 +49,31 @@ def initialize_database() -> None:
                 FOREIGN KEY (account_id) REFERENCES accounts(id),
                 FOREIGN KEY (category_id) REFERENCES categories(id)
             );
+
+            CREATE TABLE IF NOT EXISTS balance_adjustments (
+                id INTEGER PRIMARY KEY,
+                account_id INTEGER NOT NULL,
+                amount_cents INTEGER NOT NULL CHECK (amount_cents != 0),
+                adjustment_date TEXT NOT NULL,
+                note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+            );
             """
         )
+
+        # Migration for existing databases:
+        # Add is_active to accounts if the column does not exist yet.
+        account_columns = connection.execute(
+            "PRAGMA table_info(accounts)"
+        ).fetchall()
+
+        column_names = {column["name"] for column in account_columns}
+
+        if "is_active" not in column_names:
+            connection.execute(
+                """
+                ALTER TABLE accounts
+                ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+                """
+            )
