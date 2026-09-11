@@ -180,5 +180,17 @@ class MainWindow(QMainWindow):
                 color: #64748B;
                 font-size: 15px;
             }
+
+            QPushButton#delete_button {
+                background-color: #FEE2E2;
+                color: #B91C1C;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+
+            QPushButton#delete_button:hover {
+                background-color: #FECACA;
+            }
             """
         )

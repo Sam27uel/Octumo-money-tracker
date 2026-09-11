@@ -7,7 +7,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.services.account_service import create_account, list_accounts
+from app.services.account_service import (
+    create_account,
+    delete_account,
+    list_accounts,
+)
 from app.ui.add_account_dialog import AddAccountDialog
 
 
@@ -70,8 +74,25 @@ class AccountsView(QWidget):
 
             self.refresh_accounts()
 
+    def confirm_delete_account(
+        self,
+        account_id: int,
+        account_name: str,
+    ) -> None:
+        result = QMessageBox.question(
+            self,
+            "Delete account",
+            f"Are you sure you want to delete '{account_name}'?",
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if result == QMessageBox.StandardButton.Yes:
+            delete_account(account_id)
+            self.refresh_accounts()
+
     def refresh_accounts(self) -> None:
-        # Remove existing account cards
         while self.accounts_layout.count():
             item = self.accounts_layout.takeAt(0)
 
@@ -103,8 +124,22 @@ class AccountsView(QWidget):
             )
             balance_label.setObjectName("account_balance")
 
+            delete_button = QPushButton("Delete")
+            delete_button.setObjectName("delete_button")
+
+            delete_button.clicked.connect(
+                lambda checked=False,
+                account_id=account["id"],
+                account_name=account["name"]: self.confirm_delete_account(
+                    account_id,
+                    account_name,
+                )
+            )
+
             card_layout.addWidget(name_label)
             card_layout.addStretch()
             card_layout.addWidget(balance_label)
+            card_layout.addSpacing(12)
+            card_layout.addWidget(delete_button)
 
             self.accounts_layout.addWidget(card)
