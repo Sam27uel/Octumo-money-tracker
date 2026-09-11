@@ -14,6 +14,7 @@ from app.ui.transactions_view import TransactionsView
 from app.ui.accounts_view import AccountsView
 from app.ui.categories_view import CategoriesView
 from app.ui.settings_view import SettingsView
+from app.ui.modal_overlay import ModalOverlay
 
 
 class MainWindow(QMainWindow):
@@ -24,10 +25,14 @@ class MainWindow(QMainWindow):
         self.resize(1100, 700)
         self.setMinimumSize(900, 600)
 
+        # Main application container
         central_widget = QWidget()
         main_layout = QHBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+
+        # Modal overlay
+        self.modal_overlay = None
 
         # Sidebar
         sidebar = QWidget()
@@ -60,7 +65,9 @@ class MainWindow(QMainWindow):
         ]
 
         for button in buttons:
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.setCursor(
+                Qt.CursorShape.PointingHandCursor
+            )
             sidebar_layout.addWidget(button)
 
         sidebar_layout.addStretch()
@@ -194,3 +201,32 @@ class MainWindow(QMainWindow):
             }
             """
         )
+
+    def show_modal(self, content: QWidget) -> None:
+        """
+        Display a content widget inside the application modal overlay.
+        """
+
+        if self.modal_overlay is not None:
+            self.modal_overlay.deleteLater()
+
+        self.modal_overlay = ModalOverlay(
+            content=content,
+            parent=self.centralWidget(),
+        )
+
+        self.modal_overlay.setGeometry(
+            self.centralWidget().rect()
+        )
+
+        self.modal_overlay.show()
+        self.modal_overlay.raise_()
+
+    def close_modal(self) -> None:
+        """
+        Close the currently displayed modal overlay.
+        """
+
+        if self.modal_overlay is not None:
+            self.modal_overlay.close_modal()
+            self.modal_overlay = None
