@@ -1,16 +1,15 @@
 from datetime import date
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QDialog,
-    QDialogButtonBox,
-    QDoubleSpinBox,
-    QFormLayout,
-    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from app.services.account_service import (
@@ -23,7 +22,9 @@ from app.services.account_service import (
 )
 
 
-class ManageAccountDialog(QDialog):
+class ManageAccountDialog(QWidget):
+    finished = Signal()
+
     def __init__(
         self,
         account_id: int,
@@ -37,112 +38,306 @@ class ManageAccountDialog(QDialog):
         self.account_name = account_name
         self.is_active = is_active
 
-        self.setWindowTitle("Manage account")
-        self.setMinimumWidth(420)
-
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # Account header
-        title = QLabel(account_name)
-        title.setStyleSheet(
-            """
-            font-size: 22px;
-            font-weight: 700;
-            """
-        )
+        # -------------------------------------------------
+        # Header
+        # -------------------------------------------------
+
+        title = QLabel("Manage account")
+        title.setObjectName("modal_title")
 
         layout.addWidget(title)
 
-        # Balance section
-        balance_group = QGroupBox("Balance")
-        balance_layout = QVBoxLayout(balance_group)
+        subtitle = QLabel(
+            f"Manage settings and balance for {account_name}."
+        )
+        subtitle.setObjectName("modal_subtitle")
+        subtitle.setWordWrap(True)
 
-        current_balance = get_current_balance(account_id)
+        layout.addSpacing(6)
+        layout.addWidget(subtitle)
 
-        balance_label = QLabel(
+        # -------------------------------------------------
+        # Current balance
+        # -------------------------------------------------
+
+        layout.addSpacing(26)
+
+        balance_section = QLabel("Current balance")
+        balance_section.setObjectName("section_label")
+
+        layout.addWidget(balance_section)
+
+        current_balance = get_current_balance(
+            account_id
+        )
+
+        balance_card = QWidget()
+        balance_card.setObjectName("balance_card")
+
+        balance_layout = QHBoxLayout(balance_card)
+        balance_layout.setContentsMargins(
+            16,
+            14,
+            16,
+            14,
+        )
+
+        balance_value = QLabel(
             f"{current_balance / 100:.2f} €"
         )
-        balance_label.setStyleSheet(
-            """
-            font-size: 24px;
-            font-weight: 700;
-            """
+        balance_value.setObjectName("balance_value")
+
+        balance_layout.addWidget(balance_value)
+        balance_layout.addStretch()
+
+        layout.addSpacing(8)
+        layout.addWidget(balance_card)
+
+        # Adjust balance
+        adjust_button = QPushButton(
+            "Adjust balance"
+        )
+        adjust_button.setObjectName(
+            "modal_secondary_button"
+        )
+        adjust_button.setFixedHeight(42)
+
+        adjust_button.clicked.connect(
+            self.adjust_balance
         )
 
-        balance_layout.addWidget(QLabel("Current balance"))
-        balance_layout.addWidget(balance_label)
+        layout.addSpacing(10)
+        layout.addWidget(adjust_button)
 
-        adjust_button = QPushButton("Adjust balance")
-        adjust_button.clicked.connect(self.adjust_balance)
+        # -------------------------------------------------
+        # Account
+        # -------------------------------------------------
 
-        balance_layout.addWidget(adjust_button)
+        layout.addSpacing(24)
 
-        layout.addWidget(balance_group)
+        account_section = QLabel("Account")
+        account_section.setObjectName(
+            "section_label"
+        )
 
-        # Account section
-        account_group = QGroupBox("Account")
-        account_layout = QVBoxLayout(account_group)
+        layout.addWidget(account_section)
 
-        rename_button = QPushButton("Rename account")
-        rename_button.clicked.connect(self.rename)
+        layout.addSpacing(8)
 
-        account_layout.addWidget(rename_button)
+        # Rename
+        rename_button = QPushButton(
+            "Rename account"
+        )
+        rename_button.setObjectName(
+            "modal_secondary_button"
+        )
+        rename_button.setFixedHeight(42)
 
+        rename_button.clicked.connect(
+            self.rename
+        )
+
+        layout.addWidget(rename_button)
+
+        layout.addSpacing(8)
+
+        # Archive / Restore
         if self.is_active:
-            archive_button = QPushButton("Archive account")
-            archive_button.clicked.connect(self.archive)
+            archive_button = QPushButton(
+                "Archive account"
+            )
+            archive_button.setObjectName(
+                "modal_secondary_button"
+            )
+            archive_button.setFixedHeight(42)
 
-            account_layout.addWidget(archive_button)
+            archive_button.clicked.connect(
+                self.archive
+            )
+
+            layout.addWidget(archive_button)
 
         else:
-            restore_button = QPushButton("Restore account")
-            restore_button.clicked.connect(self.restore)
+            restore_button = QPushButton(
+                "Restore account"
+            )
+            restore_button.setObjectName(
+                "modal_primary_button"
+            )
+            restore_button.setFixedHeight(42)
 
-            account_layout.addWidget(restore_button)
+            restore_button.clicked.connect(
+                self.restore
+            )
 
-        layout.addWidget(account_group)
+            layout.addWidget(restore_button)
 
+        # -------------------------------------------------
         # Danger zone
-        danger_group = QGroupBox("Danger zone")
-        danger_layout = QVBoxLayout(danger_group)
+        # -------------------------------------------------
 
-        danger_label = QLabel(
-            "Permanently deleting an account also deletes all "
-            "transactions associated with it."
+        layout.addSpacing(24)
+
+        danger_section = QLabel("Danger zone")
+        danger_section.setObjectName(
+            "danger_section"
         )
-        danger_label.setWordWrap(True)
 
-        danger_layout.addWidget(danger_label)
+        layout.addWidget(danger_section)
 
-        delete_button = QPushButton("Delete account permanently")
-        delete_button.setStyleSheet(
+        layout.addSpacing(8)
+
+        delete_button = QPushButton(
+            "Delete account permanently"
+        )
+        delete_button.setObjectName(
+            "danger_button"
+        )
+        delete_button.setFixedHeight(42)
+
+        delete_button.clicked.connect(
+            self.delete_permanently
+        )
+
+        layout.addWidget(delete_button)
+
+        # -------------------------------------------------
+        # Close
+        # -------------------------------------------------
+
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        buttons_layout.addStretch()
+
+        close_button = QPushButton("Close")
+        close_button.setObjectName(
+            "modal_cancel_button"
+        )
+        close_button.setFixedSize(100, 42)
+
+        close_button.clicked.connect(
+            self.close_modal
+        )
+
+        buttons_layout.addWidget(close_button)
+
+        layout.addSpacing(28)
+        layout.addLayout(buttons_layout)
+
+        # -------------------------------------------------
+        # Styling
+        # -------------------------------------------------
+
+        self.setStyleSheet(
             """
-            QPushButton {
+            QLabel#modal_title {
+                color: #0F172A;
+                font-size: 24px;
+                font-weight: 700;
+            }
+
+            QLabel#modal_subtitle {
+                color: #64748B;
+                font-size: 14px;
+            }
+
+            QLabel#section_label {
+                color: #334155;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            QLabel#danger_section {
+                color: #B91C1C;
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            QWidget#balance_card {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+            }
+
+            QLabel#balance_value {
+                color: #0F172A;
+                font-size: 22px;
+                font-weight: 700;
+            }
+
+            QPushButton#modal_primary_button {
+                background-color: #0F172A;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 0 16px;
+            }
+
+            QPushButton#modal_primary_button:hover {
+                background-color: #1E293B;
+            }
+
+            QPushButton#modal_secondary_button {
+                background-color: #FFFFFF;
+                color: #334155;
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                padding: 0 16px;
+            }
+
+            QPushButton#modal_secondary_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+            }
+
+            QPushButton#modal_cancel_button {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                padding: 0;
+            }
+
+            QPushButton#modal_cancel_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+            }
+
+            QPushButton#danger_button {
+                background-color: #FFFFFF;
                 color: #B91C1C;
                 border: 1px solid #FCA5A5;
-                background-color: #FEF2F2;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                padding: 0 16px;
             }
 
-            QPushButton:hover {
-                background-color: #FEE2E2;
+            QPushButton#danger_button:hover {
+                background-color: #FEF2F2;
             }
             """
         )
-        delete_button.clicked.connect(self.delete_permanently)
 
-        danger_layout.addWidget(delete_button)
-
-        layout.addWidget(danger_group)
-
-        # Bottom buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Close
-        )
-
-        buttons.rejected.connect(self.reject)
-
-        layout.addWidget(buttons)
+    def close_modal(self) -> None:
+        self.finished.emit()
+        self.window().close_modal()
 
     def rename(self) -> None:
         new_name, accepted = QInputDialog.getText(
@@ -171,7 +366,6 @@ class ManageAccountDialog(QDialog):
                 self.account_id,
                 new_name,
             )
-
         except Exception as error:
             QMessageBox.warning(
                 self,
@@ -181,14 +375,16 @@ class ManageAccountDialog(QDialog):
             return
 
         self.account_name = new_name
-        self.accept()
+        self.close_modal()
 
     def adjust_balance(self) -> None:
         current_balance = get_current_balance(
             self.account_id
         )
 
-        current_balance_euros = current_balance / 100
+        current_balance_euros = (
+            current_balance / 100
+        )
 
         amount, accepted = QInputDialog.getDouble(
             self,
@@ -207,18 +403,23 @@ class ManageAccountDialog(QDialog):
         if not accepted:
             return
 
-        actual_balance_cents = round(amount * 100)
+        actual_balance_cents = round(
+            amount * 100
+        )
 
         adjustment_cents = (
-            actual_balance_cents - current_balance
+            actual_balance_cents
+            - current_balance
         )
 
         if adjustment_cents == 0:
             QMessageBox.information(
                 self,
                 "No adjustment needed",
-                "The actual balance already matches the "
-                "calculated balance.",
+                (
+                    "The actual balance already "
+                    "matches the calculated balance."
+                ),
             )
             return
 
@@ -238,7 +439,6 @@ class ManageAccountDialog(QDialog):
                 adjustment_date=date.today().isoformat(),
                 note=note,
             )
-
         except Exception as error:
             QMessageBox.warning(
                 self,
@@ -256,7 +456,7 @@ class ManageAccountDialog(QDialog):
             ),
         )
 
-        self.accept()
+        self.close_modal()
 
     def archive(self) -> None:
         answer = QMessageBox.question(
@@ -264,9 +464,9 @@ class ManageAccountDialog(QDialog):
             "Archive account",
             (
                 f"Archive '{self.account_name}'?\n\n"
-                "The account and its transaction history "
-                "will remain available, but the account will "
-                "no longer be active."
+                "The account and its transaction "
+                "history will remain available, but "
+                "the account will no longer be active."
             ),
         )
 
@@ -274,8 +474,9 @@ class ManageAccountDialog(QDialog):
             return
 
         try:
-            archive_account(self.account_id)
-
+            archive_account(
+                self.account_id
+            )
         except Exception as error:
             QMessageBox.warning(
                 self,
@@ -284,12 +485,13 @@ class ManageAccountDialog(QDialog):
             )
             return
 
-        self.accept()
+        self.close_modal()
 
     def restore(self) -> None:
         try:
-            restore_account(self.account_id)
-
+            restore_account(
+                self.account_id
+            )
         except Exception as error:
             QMessageBox.warning(
                 self,
@@ -298,15 +500,15 @@ class ManageAccountDialog(QDialog):
             )
             return
 
-        self.accept()
+        self.close_modal()
 
     def delete_permanently(self) -> None:
         first_confirmation = QMessageBox.question(
             self,
             "Delete account permanently",
             (
-                f"Are you sure you want to permanently delete "
-                f"'{self.account_name}'?\n\n"
+                f"Are you sure you want to permanently "
+                f"delete '{self.account_name}'?\n\n"
                 "All transactions and balance adjustments "
                 "belonging to this account will also be deleted."
             ),
@@ -315,7 +517,10 @@ class ManageAccountDialog(QDialog):
             QMessageBox.StandardButton.No,
         )
 
-        if first_confirmation != QMessageBox.StandardButton.Yes:
+        if (
+            first_confirmation
+            != QMessageBox.StandardButton.Yes
+        ):
             return
 
         second_confirmation = QMessageBox.question(
@@ -330,14 +535,16 @@ class ManageAccountDialog(QDialog):
             QMessageBox.StandardButton.No,
         )
 
-        if second_confirmation != QMessageBox.StandardButton.Yes:
+        if (
+            second_confirmation
+            != QMessageBox.StandardButton.Yes
+        ):
             return
 
         try:
             delete_account_permanently(
                 self.account_id
             )
-
         except Exception as error:
             QMessageBox.warning(
                 self,
@@ -346,4 +553,4 @@ class ManageAccountDialog(QDialog):
             )
             return
 
-        self.accept()
+        self.close_modal()
