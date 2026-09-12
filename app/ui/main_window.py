@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
 
         # Modal overlay
         self.modal_overlay = None
+        self.modal_stack = []
 
         # Sidebar
         sidebar = QWidget()
@@ -40,7 +41,12 @@ class MainWindow(QMainWindow):
         sidebar.setFixedWidth(220)
 
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(20, 24, 20, 24)
+        sidebar_layout.setContentsMargins(
+            20,
+            24,
+            20,
+            24,
+        )
         sidebar_layout.setSpacing(8)
 
         logo = QLabel("Octumo 🐙")
@@ -51,9 +57,13 @@ class MainWindow(QMainWindow):
 
         # Navigation buttons
         self.dashboard_button = QPushButton("Dashboard")
-        self.transactions_button = QPushButton("Transactions")
+        self.transactions_button = QPushButton(
+            "Transactions"
+        )
         self.accounts_button = QPushButton("Accounts")
-        self.categories_button = QPushButton("Categories")
+        self.categories_button = QPushButton(
+            "Categories"
+        )
         self.settings_button = QPushButton("Settings")
 
         buttons = [
@@ -204,11 +214,19 @@ class MainWindow(QMainWindow):
 
     def show_modal(self, content: QWidget) -> None:
         """
-        Display a content widget inside the application modal overlay.
+        Display a content widget inside the application
+        modal overlay.
+
+        Existing overlays are hidden and stored in a stack
+        so nested modals can be opened safely.
         """
 
         if self.modal_overlay is not None:
-            self.modal_overlay.deleteLater()
+            self.modal_stack.append(
+                self.modal_overlay
+            )
+
+            self.modal_overlay.hide()
 
         self.modal_overlay = ModalOverlay(
             content=content,
@@ -225,8 +243,26 @@ class MainWindow(QMainWindow):
     def close_modal(self) -> None:
         """
         Close the currently displayed modal overlay.
+
+        If a previous modal exists in the stack,
+        restore it instead of destroying it.
         """
 
         if self.modal_overlay is not None:
-            self.modal_overlay.close_modal()
+            current_overlay = self.modal_overlay
+
             self.modal_overlay = None
+
+            current_overlay.close_modal()
+
+        if self.modal_stack:
+            previous_overlay = self.modal_stack.pop()
+
+            self.modal_overlay = previous_overlay
+
+            previous_overlay.setGeometry(
+                self.centralWidget().rect()
+            )
+
+            previous_overlay.show()
+            previous_overlay.raise_()
