@@ -224,3 +224,23 @@ def get_current_balance(account_id: int) -> int:
             + transaction_total
             + adjustment_total
         )
+
+def list_balance_adjustments(
+    account_id: int,
+) -> list[sqlite3.Row]:
+    with get_connection() as connection:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                account_id,
+                amount_cents,
+                adjustment_date,
+                note,
+                created_at
+            FROM balance_adjustments
+            WHERE account_id = ?
+            ORDER BY adjustment_date DESC, id DESC
+            """,
+            (account_id,),
+        ).fetchall()   

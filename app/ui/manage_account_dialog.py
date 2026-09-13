@@ -3,11 +3,11 @@ from datetime import date
 from PySide6.QtCore import Qt, QRegularExpression, Signal
 from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
 )
 
@@ -16,6 +16,7 @@ from app.services.account_service import (
     archive_account,
     delete_account_permanently,
     get_current_balance,
+    list_balance_adjustments,
     rename_account,
     restore_account,
 )
@@ -41,9 +42,9 @@ class ManageAccountDialog(QWidget):
 
         self.build_ui()
 
-    # =========================================================
-    # MAIN UI
-    # =========================================================
+    # =================================================
+    # UI
+    # =================================================
 
     def build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -57,18 +58,14 @@ class ManageAccountDialog(QWidget):
 
         layout.setSpacing(0)
 
-        # -----------------------------------------------------
-        # Title
-        # -----------------------------------------------------
+        # -------------------------------------------------
+        # Header
+        # -------------------------------------------------
 
         title = QLabel("Manage account")
         title.setObjectName("manage_title")
 
         layout.addWidget(title)
-
-        # -----------------------------------------------------
-        # Subtitle
-        # -----------------------------------------------------
 
         subtitle = QLabel(
             f"Manage settings and balance for {self.account_name}."
@@ -81,13 +78,14 @@ class ManageAccountDialog(QWidget):
         subtitle.setWordWrap(True)
 
         layout.addSpacing(6)
+
         layout.addWidget(subtitle)
 
-        # -----------------------------------------------------
-        # Balance section
-        # -----------------------------------------------------
-
         layout.addSpacing(28)
+
+        # -------------------------------------------------
+        # Balance section
+        # -------------------------------------------------
 
         balance_section_title = QLabel(
             "Balance"
@@ -124,9 +122,25 @@ class ManageAccountDialog(QWidget):
             balance_row
         )
 
-        # -----------------------------------------------------
-        # Separator
-        # -----------------------------------------------------
+        # -------------------------------------------------
+        # Balance history
+        # -------------------------------------------------
+
+        layout.addSpacing(12)
+
+        history_row = self.create_action_row(
+            title="Balance history",
+            description=(
+                "View previous manual balance adjustments."
+            ),
+            button_text="View history",
+            button_object_name="secondary_button",
+            callback=self.show_balance_history,
+        )
+
+        layout.addWidget(
+            history_row
+        )
 
         layout.addSpacing(20)
 
@@ -136,11 +150,11 @@ class ManageAccountDialog(QWidget):
             separator_1
         )
 
-        # -----------------------------------------------------
-        # Account section
-        # -----------------------------------------------------
-
         layout.addSpacing(20)
+
+        # -------------------------------------------------
+        # Account section
+        # -------------------------------------------------
 
         account_section_title = QLabel(
             "Account"
@@ -155,10 +169,6 @@ class ManageAccountDialog(QWidget):
         )
 
         layout.addSpacing(12)
-
-        # -----------------------------------------------------
-        # Rename
-        # -----------------------------------------------------
 
         rename_row = self.create_action_row(
             title="Rename account",
@@ -175,10 +185,6 @@ class ManageAccountDialog(QWidget):
         )
 
         layout.addSpacing(12)
-
-        # -----------------------------------------------------
-        # Archive / Restore
-        # -----------------------------------------------------
 
         if self.is_active:
             archive_row = self.create_action_row(
@@ -205,10 +211,6 @@ class ManageAccountDialog(QWidget):
             archive_row
         )
 
-        # -----------------------------------------------------
-        # Separator
-        # -----------------------------------------------------
-
         layout.addSpacing(20)
 
         separator_2 = self.create_separator()
@@ -217,11 +219,11 @@ class ManageAccountDialog(QWidget):
             separator_2
         )
 
-        # -----------------------------------------------------
-        # Danger zone
-        # -----------------------------------------------------
-
         layout.addSpacing(20)
+
+        # -------------------------------------------------
+        # Danger zone
+        # -------------------------------------------------
 
         danger_title = QLabel(
             "Danger zone"
@@ -251,11 +253,11 @@ class ManageAccountDialog(QWidget):
             delete_row
         )
 
-        # -----------------------------------------------------
-        # Close button
-        # -----------------------------------------------------
-
         layout.addSpacing(24)
+
+        # -------------------------------------------------
+        # Bottom
+        # -------------------------------------------------
 
         bottom_layout = QHBoxLayout()
 
@@ -266,9 +268,7 @@ class ManageAccountDialog(QWidget):
             0,
         )
 
-        bottom_layout.setSpacing(
-            10
-        )
+        bottom_layout.setSpacing(10)
 
         bottom_layout.addStretch()
 
@@ -301,9 +301,9 @@ class ManageAccountDialog(QWidget):
             bottom_layout
         )
 
-        # -----------------------------------------------------
+        # -------------------------------------------------
         # Styling
-        # -----------------------------------------------------
+        # -------------------------------------------------
 
         self.setStyleSheet(
             """
@@ -413,9 +413,9 @@ class ManageAccountDialog(QWidget):
             """
         )
 
-    # =========================================================
-    # ACTION ROW
-    # =========================================================
+    # =================================================
+    # Action rows
+    # =================================================
 
     def create_action_row(
         self,
@@ -442,10 +442,6 @@ class ManageAccountDialog(QWidget):
         row_layout.setSpacing(
             12
         )
-
-        # -----------------------------------------------------
-        # Left side
-        # -----------------------------------------------------
 
         text_layout = QVBoxLayout()
 
@@ -493,10 +489,6 @@ class ManageAccountDialog(QWidget):
             1,
         )
 
-        # -----------------------------------------------------
-        # Right side
-        # -----------------------------------------------------
-
         if value is not None:
             value_label = QLabel(
                 value
@@ -523,8 +515,9 @@ class ManageAccountDialog(QWidget):
             button_object_name
         )
 
+        # All action buttons use the same dimensions.
         button.setFixedSize(
-            105,
+            125,
             42,
         )
 
@@ -542,13 +535,7 @@ class ManageAccountDialog(QWidget):
 
         return row
 
-    # =========================================================
-    # SEPARATOR
-    # =========================================================
-
-    def create_separator(
-        self,
-    ) -> QWidget:
+    def create_separator(self) -> QWidget:
         separator = QLabel()
 
         separator.setObjectName(
@@ -561,150 +548,244 @@ class ManageAccountDialog(QWidget):
 
         return separator
 
-    # =========================================================
-    # MONEY
-    # =========================================================
+    # =================================================
+    # Balance history
+    # =================================================
 
-    @staticmethod
-    def format_money(
-        amount_cents: int,
-    ) -> str:
-        amount = amount_cents / 100
-
-        return f"{amount:,.2f} €".replace(
-            ",",
-            " ",
+    def show_balance_history(self) -> None:
+        adjustments = list_balance_adjustments(
+            self.account_id
         )
 
-    # =========================================================
-    # ERROR
-    # =========================================================
-
-    def show_error(
-        self,
-        message: str,
-    ) -> None:
         modal = Modal(
-            title="Something went wrong",
-            subtitle=message,
-            primary_text="OK",
+            title="Balance history",
+            subtitle=(
+                f"Previous manual balance adjustments "
+                f"for {self.account_name}."
+            ),
+            primary_text="Close",
             cancel_text="",
         )
 
         modal.cancel_button.hide()
 
-        modal.primary_button.setFixedSize(
-            90,
-            42,
+        modal.setStyleSheet(
+            modal.styleSheet()
+            + """
+                QWidget#history_row {
+                    background-color: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 10px;
+                }
+
+                QLabel#history_date {
+                    color: #64748B;
+                    font-size: 12px;
+                    font-weight: 500;
+                }
+
+                QLabel#history_note {
+                    color: #0F172A;
+                    font-size: 14px;
+                    font-weight: 600;
+                }
+
+                QLabel#history_amount_positive {
+                    color: #15803D;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+
+                QLabel#history_amount_negative {
+                    color: #B91C1C;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+
+                QLabel#history_empty {
+                    color: #64748B;
+                    font-size: 14px;
+                }
+            """
         )
+
+        if not adjustments:
+            empty_label = QLabel(
+                "No balance adjustments have been recorded yet."
+            )
+
+            empty_label.setObjectName(
+                "history_empty"
+            )
+
+            empty_label.setAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+
+            modal.add_content(
+                empty_label
+            )
+
+        else:
+            for adjustment in adjustments:
+                row = self.create_history_row(
+                    adjustment
+                )
+
+                modal.add_content(
+                    row
+                )
 
         modal.primary_button.clicked.connect(
             self.close_nested_modal
         )
 
-        modal.cancelled.connect(
-            self.close_nested_modal
-        )
-
         self.window().show_modal(
             modal
         )
 
-    def close_nested_modal(
+    def create_history_row(
         self,
-    ) -> None:
-        self.window().close_modal()
+        adjustment,
+    ) -> QWidget:
+        row = QWidget()
 
-    # =========================================================
-    # RENAME
-    # =========================================================
-
-    def rename(
-        self,
-    ) -> None:
-        modal = Modal(
-            title="Rename account",
-            subtitle=(
-                "Enter a new name for this account."
-            ),
-            primary_text="Rename",
+        row.setObjectName(
+            "history_row"
         )
 
-        name_input = QLineEdit()
-
-        name_input.setText(
-            self.account_name
+        row_layout = QHBoxLayout(
+            row
         )
 
-        name_input.setPlaceholderText(
-            "e.g. Revolut"
+        row_layout.setContentsMargins(
+            14,
+            12,
+            14,
+            12,
         )
 
-        name_input.setMinimumHeight(
-            44
+        row_layout.setSpacing(
+            12
         )
 
-        modal.add_content(
-            self.create_form_field(
-                "Account name",
-                name_input,
+        text_layout = QVBoxLayout()
+
+        text_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        text_layout.setSpacing(
+            2
+        )
+
+        date_label = QLabel(
+            self.format_history_date(
+                adjustment["adjustment_date"]
             )
         )
 
-        def save_name() -> None:
-            new_name = (
-                name_input.text()
-                .strip()
+        date_label.setObjectName(
+            "history_date"
+        )
+
+        note = adjustment["note"].strip()
+
+        if not note:
+            note = "Balance adjustment"
+
+        note_label = QLabel(
+            note
+        )
+
+        note_label.setObjectName(
+            "history_note"
+        )
+
+        text_layout.addWidget(
+            date_label
+        )
+
+        text_layout.addWidget(
+            note_label
+        )
+
+        row_layout.addLayout(
+            text_layout,
+            1,
+        )
+
+        amount_cents = adjustment[
+            "amount_cents"
+        ]
+
+        amount_label = QLabel(
+            self.format_adjustment(
+                amount_cents
+            )
+        )
+
+        if amount_cents >= 0:
+            amount_label.setObjectName(
+                "history_amount_positive"
+            )
+        else:
+            amount_label.setObjectName(
+                "history_amount_negative"
             )
 
-            if not new_name:
-                self.window().close_modal()
-
-                self.show_error(
-                    "Account name cannot be empty."
-                )
-
-                return
-
-            try:
-                rename_account(
-                    self.account_id,
-                    new_name,
-                )
-            except Exception:
-                self.window().close_modal()
-
-                self.show_error(
-                    "This account name may already be in use."
-                )
-
-                return
-
-            self.account_name = new_name
-
-            self.window().close_modal()
-
-            self.close_modal()
-
-        modal.submitted.connect(
-            save_name
+        amount_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight
+            | Qt.AlignmentFlag.AlignVCenter
         )
 
-        modal.cancelled.connect(
-            self.close_nested_modal
+        row_layout.addWidget(
+            amount_label
         )
 
-        self.window().show_modal(
-            modal
+        return row
+
+    @staticmethod
+    def format_history_date(
+        value: str,
+    ) -> str:
+        try:
+            parsed_date = date.fromisoformat(
+                value
+            )
+
+            return parsed_date.strftime(
+                "%d %b %Y"
+            )
+        except ValueError:
+            return value
+
+    @staticmethod
+    def format_adjustment(
+        amount_cents: int,
+    ) -> str:
+        amount = abs(amount_cents) / 100
+
+        formatted = (
+            f"{amount:,.2f}"
+            .replace(",", "X")
+            .replace(".", ",")
+            .replace("X", " ")
         )
 
-    # =========================================================
-    # ADJUST BALANCE
-    # =========================================================
+        if amount_cents > 0:
+            return f"+{formatted} €"
 
-    def adjust_balance(
-        self,
-    ) -> None:
+        return f"-{formatted} €"
+
+    # =================================================
+    # Balance adjustment
+    # =================================================
+
+    def adjust_balance(self) -> None:
         current_balance = get_current_balance(
             self.account_id
         )
@@ -736,11 +817,9 @@ class ManageAccountDialog(QWidget):
             | Qt.AlignmentFlag.AlignVCenter
         )
 
-        balance_validator = (
-            QRegularExpressionValidator(
-                QRegularExpression(
-                    r"^-?\d{0,10}([.,]\d{0,2})?$"
-                )
+        balance_validator = QRegularExpressionValidator(
+            QRegularExpression(
+                r"^-?\d{0,10}([.,]\d{0,2})?$"
             )
         )
 
@@ -838,13 +917,89 @@ class ManageAccountDialog(QWidget):
             modal
         )
 
-    # =========================================================
-    # ARCHIVE
-    # =========================================================
+    # =================================================
+    # Rename
+    # =================================================
 
-    def archive(
-        self,
-    ) -> None:
+    def rename(self) -> None:
+        modal = Modal(
+            title="Rename account",
+            subtitle=(
+                "Enter a new name for this account."
+            ),
+            primary_text="Rename",
+        )
+
+        name_input = QLineEdit()
+
+        name_input.setText(
+            self.account_name
+        )
+
+        name_input.setPlaceholderText(
+            "e.g. Revolut"
+        )
+
+        name_input.setMinimumHeight(
+            44
+        )
+
+        modal.add_content(
+            self.create_form_field(
+                "Account name",
+                name_input,
+            )
+        )
+
+        def save_name() -> None:
+            new_name = name_input.text().strip()
+
+            if not new_name:
+                self.window().close_modal()
+
+                self.show_error(
+                    "Account name cannot be empty."
+                )
+
+                return
+
+            try:
+                rename_account(
+                    self.account_id,
+                    new_name,
+                )
+            except Exception:
+                self.window().close_modal()
+
+                self.show_error(
+                    "This account name may already be in use."
+                )
+
+                return
+
+            self.account_name = new_name
+
+            self.window().close_modal()
+
+            self.close_modal()
+
+        modal.submitted.connect(
+            save_name
+        )
+
+        modal.cancelled.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    # =================================================
+    # Archive / Restore
+    # =================================================
+
+    def archive(self) -> None:
         modal = Modal(
             title="Archive account",
             subtitle=(
@@ -875,13 +1030,7 @@ class ManageAccountDialog(QWidget):
             modal
         )
 
-    # =========================================================
-    # RESTORE
-    # =========================================================
-
-    def restore(
-        self,
-    ) -> None:
+    def restore(self) -> None:
         modal = Modal(
             title="Restore account",
             subtitle=(
@@ -912,13 +1061,11 @@ class ManageAccountDialog(QWidget):
             modal
         )
 
-    # =========================================================
-    # DELETE
-    # =========================================================
+    # =================================================
+    # Delete
+    # =================================================
 
-    def delete_permanently(
-        self,
-    ) -> None:
+    def delete_permanently(self) -> None:
         modal = Modal(
             title="Delete account",
             subtitle=(
@@ -940,9 +1087,7 @@ class ManageAccountDialog(QWidget):
             modal
         )
 
-    def delete_second_confirmation(
-        self,
-    ) -> None:
+    def delete_second_confirmation(self) -> None:
         modal = Modal(
             title="Permanently delete account?",
             subtitle=(
@@ -993,25 +1138,19 @@ class ManageAccountDialog(QWidget):
             modal
         )
 
-    def confirm_delete(
-        self,
-    ) -> None:
+    def confirm_delete(self) -> None:
         delete_account_permanently(
             self.account_id
         )
 
-        # Close second confirmation.
+        self.window().close_modal()
         self.window().close_modal()
 
-        # Close first confirmation.
-        self.window().close_modal()
-
-        # Close Manage Account.
         self.close_modal()
 
-    # =========================================================
-    # FORM FIELD
-    # =========================================================
+    # =================================================
+    # Forms / Errors
+    # =================================================
 
     def create_form_field(
         self,
@@ -1063,13 +1202,55 @@ class ManageAccountDialog(QWidget):
 
         return container
 
-    # =========================================================
-    # CLOSE
-    # =========================================================
-
-    def close_modal(
+    def show_error(
         self,
+        message: str,
     ) -> None:
+        modal = Modal(
+            title="Something went wrong",
+            subtitle=message,
+            primary_text="OK",
+            cancel_text="",
+        )
+
+        modal.cancel_button.hide()
+
+        modal.primary_button.setFixedSize(
+            90,
+            42,
+        )
+
+        modal.primary_button.clicked.connect(
+            self.close_nested_modal
+        )
+
+        modal.cancelled.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def close_nested_modal(self) -> None:
+        self.window().close_modal()
+
+    # =================================================
+    # Helpers
+    # =================================================
+
+    @staticmethod
+    def format_money(
+        amount_cents: int,
+    ) -> str:
+        amount = amount_cents / 100
+
+        return (
+            f"{amount:,.2f} €"
+            .replace(",", " ")
+        )
+
+    def close_modal(self) -> None:
         self.finished.emit()
 
         self.window().close_modal()

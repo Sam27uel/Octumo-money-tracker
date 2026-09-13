@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import (
+    QApplication,
     QLabel,
     QMainWindow,
     QVBoxLayout,
@@ -7,7 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStackedWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 
 from app.ui.dashboard_view import DashboardView
 from app.ui.transactions_view import TransactionsView
@@ -34,6 +35,9 @@ class MainWindow(QMainWindow):
         # Modal overlay
         self.modal_overlay = None
         self.modal_stack = []
+
+        # Install global keyboard event filter
+        QApplication.instance().installEventFilter(self)
 
         # Sidebar
         sidebar = QWidget()
@@ -210,6 +214,57 @@ class MainWindow(QMainWindow):
                 background-color: #FECACA;
             }
             """
+        )
+
+    def eventFilter(
+        self,
+        watched,
+        event,
+    ) -> bool:
+        """
+        Handle global keyboard shortcuts while a modal is open.
+        """
+
+        if self.modal_overlay is None:
+            return super().eventFilter(
+                watched,
+                event,
+            )
+
+        if event.type() != QEvent.Type.KeyPress:
+            return super().eventFilter(
+                watched,
+                event,
+            )
+
+        # ESC = go back / close current modal
+        if event.key() == Qt.Key.Key_Escape:
+            self.close_modal()
+            event.accept()
+            return True
+
+        # ENTER = confirm primary action
+        if event.key() in (
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Enter,
+        ):
+            primary_button = self.modal_overlay.findChild(
+                QPushButton,
+                "modal_primary_button",
+            )
+
+            if (
+                primary_button is not None
+                and primary_button.isVisible()
+                and primary_button.isEnabled()
+            ):
+                primary_button.click()
+                event.accept()
+                return True
+
+        return super().eventFilter(
+            watched,
+            event,
         )
 
     def show_modal(self, content: QWidget) -> None:

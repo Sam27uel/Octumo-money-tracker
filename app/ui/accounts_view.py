@@ -14,9 +14,11 @@ from PySide6.QtWidgets import (
 
 from app.services.account_service import (
     create_account,
+    delete_account_permanently,
     get_account,
     get_current_balance,
     list_accounts,
+    restore_account,
 )
 from app.ui.manage_account_dialog import ManageAccountDialog
 from app.ui.modal import Modal
@@ -158,11 +160,7 @@ class AccountsView(QWidget):
         )
 
         # -------------------------------------------------
-        # Bottom reserved area
-        #
-        # Reserved for:
-        # - Total balance
-        # - Archived accounts
+        # Bottom section
         # -------------------------------------------------
 
         layout.addSpacing(20)
@@ -173,8 +171,101 @@ class AccountsView(QWidget):
             "accounts_bottom_area"
         )
 
-        self.bottom_area.setMinimumHeight(
-            64
+        bottom_layout = QHBoxLayout(
+            self.bottom_area
+        )
+
+        bottom_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        bottom_layout.setSpacing(16)
+
+        # -------------------------------------------------
+        # Total balance
+        # -------------------------------------------------
+
+        self.total_balance_card = QWidget()
+
+        self.total_balance_card.setObjectName(
+            "total_balance_card"
+        )
+
+        total_balance_layout = QVBoxLayout(
+            self.total_balance_card
+        )
+
+        total_balance_layout.setContentsMargins(
+            20,
+            14,
+            20,
+            14,
+        )
+
+        total_balance_layout.setSpacing(2)
+
+        total_balance_title = QLabel(
+            "Total balance"
+        )
+
+        total_balance_title.setObjectName(
+            "total_balance_title"
+        )
+
+        self.total_balance_value = QLabel(
+            "0,00 €"
+        )
+
+        self.total_balance_value.setObjectName(
+            "total_balance_value"
+        )
+
+        total_balance_layout.addWidget(
+            total_balance_title
+        )
+
+        total_balance_layout.addWidget(
+            self.total_balance_value
+        )
+
+        bottom_layout.addWidget(
+            self.total_balance_card,
+            1,
+        )
+
+        # -------------------------------------------------
+        # Archived accounts
+        # -------------------------------------------------
+
+        self.archived_button = QPushButton(
+            "Archived accounts"
+        )
+
+        self.archived_button.setObjectName(
+            "archived_button"
+        )
+
+        self.archived_button.setFixedHeight(
+            52
+        )
+
+        self.archived_button.setMinimumWidth(
+            170
+        )
+
+        self.archived_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.archived_button.clicked.connect(
+            self.open_archived_accounts
+        )
+
+        bottom_layout.addWidget(
+            self.archived_button
         )
 
         layout.addWidget(
@@ -259,6 +350,40 @@ class AccountsView(QWidget):
                 font-size: 15px;
             }
 
+            QWidget#total_balance_card {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+            }
+
+            QLabel#total_balance_title {
+                color: #64748B;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            QLabel#total_balance_value {
+                color: #0F172A;
+                font-size: 20px;
+                font-weight: 700;
+            }
+
+            QPushButton#archived_button {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                padding: 0 16px;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            QPushButton#archived_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+                border: 1px solid #94A3B8;
+            }
+
             QScrollBar:vertical {
                 width: 8px;
                 background: transparent;
@@ -341,12 +466,29 @@ class AccountsView(QWidget):
                 empty_label
             )
 
-            return
+        else:
+            for account in accounts:
+                self.add_account_card(
+                    account
+                )
+
+        self.refresh_total_balance()
+
+    def refresh_total_balance(self) -> None:
+        accounts = list_accounts()
+
+        total_balance_cents = 0
 
         for account in accounts:
-            self.add_account_card(
-                account
+            total_balance_cents += get_current_balance(
+                account["id"]
             )
+
+        self.total_balance_value.setText(
+            self.format_balance(
+                total_balance_cents / 100
+            )
+        )
 
     def clear_accounts(self) -> None:
         while self.accounts_container.count():
@@ -472,6 +614,405 @@ class AccountsView(QWidget):
         self.accounts_container.addWidget(
             card
         )
+
+    # =================================================
+    # Archived accounts
+    # =================================================
+
+    def open_archived_accounts(self) -> None:
+        archived_accounts = list_accounts(
+            include_archived=True
+        )
+
+        archived_accounts = [
+            account
+            for account in archived_accounts
+            if not bool(account["is_active"])
+        ]
+
+        modal = Modal(
+            title="Archived accounts",
+            subtitle=(
+                "Accounts you have archived are hidden "
+                "from your active accounts."
+            ),
+            primary_text="Close",
+            cancel_text="",
+        )
+
+        # -------------------------------------------------
+        # Archived modal styling
+        # -------------------------------------------------
+
+        modal.setStyleSheet(
+            modal.styleSheet()
+            + """
+                QWidget#archived_row {
+                    background-color: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 10px;
+                }
+
+                QLabel#archived_name {
+                    color: #0F172A;
+                    font-size: 14px;
+                    font-weight: 600;
+                }
+
+                QLabel#archived_description {
+                    color: #64748B;
+                    font-size: 12px;
+                }
+
+                QPushButton#restore_button {
+                    background-color: #FFFFFF;
+                    color: #475569;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    padding: 0 12px;
+                }
+
+                QPushButton#restore_button:hover {
+                    background-color: #F8FAFC;
+                    color: #0F172A;
+                    border: 1px solid #94A3B8;
+                }
+
+                QPushButton#archived_delete_button {
+                    background-color: #FFFFFF;
+                    color: #B91C1C;
+                    border: 1px solid #FCA5A5;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    padding: 0 12px;
+                }
+
+                QPushButton#archived_delete_button:hover {
+                    background-color: #FEF2F2;
+                }
+
+                QLabel#archived_empty {
+                    color: #64748B;
+                    font-size: 14px;
+                }
+            """
+        )
+
+        modal.cancel_button.hide()
+
+        # -------------------------------------------------
+        # No archived accounts
+        # -------------------------------------------------
+
+        if not archived_accounts:
+            empty_label = QLabel(
+                "There are no archived accounts."
+            )
+
+            empty_label.setObjectName(
+                "archived_empty"
+            )
+
+            empty_label.setAlignment(
+                Qt.AlignmentFlag.AlignCenter
+            )
+
+            modal.add_content(
+                empty_label
+            )
+
+            modal.primary_button.clicked.connect(
+                self.close_nested_modal
+            )
+
+            self.window().show_modal(
+                modal
+            )
+
+            return
+
+        # -------------------------------------------------
+        # Archived accounts list
+        # -------------------------------------------------
+
+        for account in archived_accounts:
+            row = self.create_archived_row(
+                account
+            )
+
+            modal.add_content(
+                row
+            )
+
+        modal.primary_button.clicked.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def create_archived_row(
+        self,
+        account,
+    ) -> QWidget:
+        account_id = account["id"]
+        account_name = account["name"]
+
+        row = QWidget()
+
+        row.setObjectName(
+            "archived_row"
+        )
+
+        row_layout = QHBoxLayout(row)
+
+        row_layout.setContentsMargins(
+            14,
+            12,
+            14,
+            12,
+        )
+
+        row_layout.setSpacing(
+            10
+        )
+
+        # -------------------------------------------------
+        # Account information
+        # -------------------------------------------------
+
+        text_layout = QVBoxLayout()
+
+        text_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        text_layout.setSpacing(
+            2
+        )
+
+        name_label = QLabel(
+            account_name
+        )
+
+        name_label.setObjectName(
+            "archived_name"
+        )
+
+        description_label = QLabel(
+            "Archived account"
+        )
+
+        description_label.setObjectName(
+            "archived_description"
+        )
+
+        text_layout.addWidget(
+            name_label
+        )
+
+        text_layout.addWidget(
+            description_label
+        )
+
+        row_layout.addLayout(
+            text_layout,
+            1,
+        )
+
+        # -------------------------------------------------
+        # Restore
+        # -------------------------------------------------
+
+        restore_button = QPushButton(
+            "Restore"
+        )
+
+        restore_button.setObjectName(
+            "restore_button"
+        )
+
+        restore_button.setFixedSize(
+            88,
+            36,
+        )
+
+        restore_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        restore_button.clicked.connect(
+            lambda checked=False,
+            account_id=account_id:
+            self.restore_archived_account(
+                account_id
+            )
+        )
+
+        row_layout.addWidget(
+            restore_button
+        )
+
+        # -------------------------------------------------
+        # Delete
+        # -------------------------------------------------
+
+        delete_button = QPushButton(
+            "Delete"
+        )
+
+        delete_button.setObjectName(
+            "archived_delete_button"
+        )
+
+        delete_button.setFixedSize(
+            78,
+            36,
+        )
+
+        delete_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        delete_button.clicked.connect(
+            lambda checked=False,
+            account_id=account_id,
+            account_name=account_name:
+            self.confirm_archived_delete(
+                account_id,
+                account_name,
+            )
+        )
+
+        row_layout.addWidget(
+            delete_button
+        )
+
+        return row
+
+    def restore_archived_account(
+        self,
+        account_id: int,
+    ) -> None:
+        restore_account(
+            account_id
+        )
+
+        self.window().close_modal()
+
+        self.refresh_accounts()
+
+    def confirm_archived_delete(
+        self,
+        account_id: int,
+        account_name: str,
+    ) -> None:
+        modal = Modal(
+            title="Delete archived account?",
+            subtitle=(
+                f"Are you sure you want to permanently "
+                f"delete {account_name}?"
+            ),
+            primary_text="Continue",
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.show_archived_delete_confirmation(
+                account_id,
+                account_name,
+            )
+        )
+
+        modal.cancelled.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def show_archived_delete_confirmation(
+        self,
+        account_id: int,
+        account_name: str,
+    ) -> None:
+        modal = Modal(
+            title="Permanently delete account?",
+            subtitle=(
+                "This action cannot be undone. "
+                "All transactions and balance adjustments "
+                f"for {account_name} will be permanently deleted."
+            ),
+            primary_text="Delete account",
+        )
+
+        modal.primary_button.setObjectName(
+            "danger_button"
+        )
+
+        modal.primary_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #B91C1C;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 0 16px;
+                text-align: left;
+            }
+
+            QPushButton:hover {
+                background-color: #991B1B;
+            }
+            """
+        )
+
+        modal.primary_button.setFixedSize(
+            135,
+            42,
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.delete_archived_account(
+                account_id
+            )
+        )
+
+        modal.cancelled.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def delete_archived_account(
+        self,
+        account_id: int,
+    ) -> None:
+        delete_account_permanently(
+            account_id
+        )
+
+        self.window().close_modal()
+        self.window().close_modal()
+        self.window().close_modal()
+
+        self.refresh_accounts()
+
+    def close_nested_modal(self) -> None:
+        self.window().close_modal()
 
     # =================================================
     # Add account modal
