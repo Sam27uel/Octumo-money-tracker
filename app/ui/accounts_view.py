@@ -2,10 +2,12 @@ from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -119,29 +121,65 @@ class AccountsView(QWidget):
         )
 
         # -------------------------------------------------
-        # Accounts
+        # Accounts scroll area
         # -------------------------------------------------
 
         layout.addSpacing(34)
 
-        self.accounts_container = QVBoxLayout()
+        self.accounts_scroll = QScrollArea()
 
-        self.accounts_container.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
+        self.accounts_scroll.setObjectName(
+            "accounts_scroll"
         )
 
-        self.accounts_container.setSpacing(
-            12
+        self.accounts_scroll.setWidgetResizable(
+            True
         )
 
-        layout.addLayout(
-            self.accounts_container
+        self.accounts_scroll.setFrameShape(
+            QFrame.Shape.NoFrame
         )
 
-        layout.addStretch()
+        self.accounts_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.accounts_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        self.accounts_scroll.setWidget(
+            self.create_accounts_container()
+        )
+
+        layout.addWidget(
+            self.accounts_scroll,
+            1,
+        )
+
+        # -------------------------------------------------
+        # Bottom reserved area
+        #
+        # Reserved for:
+        # - Total balance
+        # - Archived accounts
+        # -------------------------------------------------
+
+        layout.addSpacing(20)
+
+        self.bottom_area = QWidget()
+
+        self.bottom_area.setObjectName(
+            "accounts_bottom_area"
+        )
+
+        self.bottom_area.setMinimumHeight(
+            64
+        )
+
+        layout.addWidget(
+            self.bottom_area
+        )
 
         # -------------------------------------------------
         # Styling
@@ -172,6 +210,15 @@ class AccountsView(QWidget):
 
             QPushButton#primary_button:hover {
                 background-color: #1E293B;
+            }
+
+            QScrollArea#accounts_scroll {
+                background-color: transparent;
+                border: none;
+            }
+
+            QWidget#accounts_scroll_content {
+                background-color: transparent;
             }
 
             QWidget#account_card {
@@ -211,8 +258,62 @@ class AccountsView(QWidget):
                 color: #64748B;
                 font-size: 15px;
             }
+
+            QScrollBar:vertical {
+                width: 8px;
+                background: transparent;
+                margin: 2px 0 2px 0;
+            }
+
+            QScrollBar::handle:vertical {
+                background: #CBD5E1;
+                border-radius: 4px;
+                min-height: 32px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
             """
         )
+
+    def create_accounts_container(self) -> QWidget:
+        container = QWidget()
+
+        container.setObjectName(
+            "accounts_scroll_content"
+        )
+
+        self.accounts_container = QVBoxLayout(
+            container
+        )
+
+        self.accounts_container.setContentsMargins(
+            0,
+            0,
+            8,
+            0,
+        )
+
+        self.accounts_container.setSpacing(
+            12
+        )
+
+        self.accounts_container.setAlignment(
+            Qt.AlignmentFlag.AlignTop
+        )
+
+        return container
 
     # =================================================
     # Accounts
