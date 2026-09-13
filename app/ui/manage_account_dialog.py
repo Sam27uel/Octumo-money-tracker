@@ -1238,7 +1238,6 @@ class ManageAccountDialog(QWidget):
     # =================================================
     # Helpers
     # =================================================
-
     @staticmethod
     def format_money(
         amount_cents: int,
@@ -1249,7 +1248,7 @@ class ManageAccountDialog(QWidget):
             f"{amount:,.2f} €"
             .replace(",", " ")
         )
-
+        
     def close_modal(self) -> None:
         self.finished.emit()
 

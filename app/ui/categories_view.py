@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from app.ui.add_category_modal import AddCategoryModal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -474,14 +475,25 @@ class CategoriesView(QWidget):
     # =================================================
 
     def open_add_category_modal(self) -> None:
-        pass
+        from PySide6.QtWidgets import QApplication
 
-    # =================================================
-    # Manage category
-    # =================================================
+        main_window = QApplication.activeWindow()
 
-    def open_manage_category(
-        self,
-        category_id: int,
-    ) -> None:
-        pass
+        modal = AddCategoryModal(parent=main_window)
+
+        modal.cancelled.connect(
+            lambda: self.close_category_modal(modal)
+        )
+
+        main_window.show_modal(modal)
+
+
+    def close_category_modal(self, modal) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        main_window = QApplication.activeWindow()
+
+        if main_window.modal_overlay is not None:
+            main_window.close_modal()
+
+        self.refresh_categories()
