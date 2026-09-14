@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
 
 from app.services.category_service import (
     list_categories,
-    delete_category,
 )
 
 
@@ -209,6 +208,16 @@ class CategoriesView(QWidget):
                 font-weight: 600;
             }
 
+            QLabel#archived_label {
+                color: #64748B;
+                background-color: #F1F5F9;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+
             QPushButton#manage_button {
                 background-color: transparent;
                 color: #475569;
@@ -222,20 +231,6 @@ class CategoriesView(QWidget):
             QPushButton#manage_button:hover {
                 background-color: #F1F5F9;
                 color: #0F172A;
-            }
-
-            QPushButton#delete_button {
-                background-color: transparent;
-                color: #B91C1C;
-                border: none;
-                border-radius: 6px;
-                padding: 6px 8px;
-                font-size: 14px;
-                font-weight: 500;
-            }
-
-            QPushButton#delete_button:hover {
-                background-color: #FEF2F2;
             }
 
             QLabel#empty_state {
@@ -306,6 +301,7 @@ class CategoriesView(QWidget):
     def refresh_categories(self) -> None:
         self.clear_categories()
 
+        # Active categories
         income_categories = list_categories(
             "income"
         )
@@ -313,6 +309,21 @@ class CategoriesView(QWidget):
         expense_categories = list_categories(
             "expense"
         )
+
+        # Archived categories
+        all_categories = list_categories(
+            include_archived=True
+        )
+
+        archived_categories = [
+            category
+            for category in all_categories
+            if not category["is_active"]
+        ]
+
+        # -------------------------------------------------
+        # Income
+        # -------------------------------------------------
 
         self.add_category_section(
             title="Income",
@@ -323,10 +334,29 @@ class CategoriesView(QWidget):
             28
         )
 
+        # -------------------------------------------------
+        # Expenses
+        # -------------------------------------------------
+
         self.add_category_section(
             title="Expenses",
             categories=expense_categories,
         )
+
+        # -------------------------------------------------
+        # Archived
+        # -------------------------------------------------
+
+        if archived_categories:
+            self.categories_container.addSpacing(
+                32
+            )
+
+            self.add_category_section(
+                title="Archived",
+                categories=archived_categories,
+                archived=True,
+            )
 
         self.categories_container.addStretch()
 
@@ -345,6 +375,7 @@ class CategoriesView(QWidget):
         self,
         title: str,
         categories,
+        archived: bool = False,
     ) -> None:
         section_title = QLabel(
             title
@@ -379,7 +410,8 @@ class CategoriesView(QWidget):
 
         for category in categories:
             self.add_category_card(
-                category
+                category,
+                archived=archived,
             )
 
             self.categories_container.addSpacing(
@@ -389,6 +421,7 @@ class CategoriesView(QWidget):
     def add_category_card(
         self,
         category,
+        archived: bool = False,
     ) -> None:
         category_id = category["id"]
         category_name = category["name"]
@@ -428,9 +461,32 @@ class CategoriesView(QWidget):
             "category_name"
         )
 
+        card_layout.addWidget(
+            name_label
+        )
+
+        # -------------------------------------------------
+        # Archived label
+        # -------------------------------------------------
+
+        if archived:
+            archived_label = QLabel(
+                "Archived"
+            )
+
+            archived_label.setObjectName(
+                "archived_label"
+            )
+
+            card_layout.addWidget(
+                archived_label
+            )
+
         # -------------------------------------------------
         # Manage
         # -------------------------------------------------
+
+        card_layout.addStretch()
 
         manage_button = QPushButton(
             "Manage"
@@ -452,16 +508,6 @@ class CategoriesView(QWidget):
             )
         )
 
-        # -------------------------------------------------
-        # Layout
-        # -------------------------------------------------
-
-        card_layout.addWidget(
-            name_label
-        )
-
-        card_layout.addStretch()
-
         card_layout.addWidget(
             manage_button
         )
@@ -479,16 +525,58 @@ class CategoriesView(QWidget):
 
         main_window = QApplication.activeWindow()
 
-        modal = AddCategoryModal(parent=main_window)
-
-        modal.cancelled.connect(
-            lambda: self.close_category_modal(modal)
+        modal = AddCategoryModal(
+            parent=main_window
         )
 
-        main_window.show_modal(modal)
+        modal.cancelled.connect(
+            lambda: self.close_category_modal(
+                modal
+            )
+        )
 
+        main_window.show_modal(
+            modal
+        )
 
-    def close_category_modal(self, modal) -> None:
+    # =================================================
+    # Manage category
+    # =================================================
+
+    def open_manage_category(
+        self,
+        category_id: int,
+    ) -> None:
+        from PySide6.QtWidgets import QApplication
+        from app.ui.manage_category_modal import (
+            ManageCategoryModal,
+        )
+
+        main_window = QApplication.activeWindow()
+
+        modal = ManageCategoryModal(
+            category_id=category_id,
+            parent=main_window,
+        )
+
+        modal.cancelled.connect(
+            lambda: self.close_category_modal(
+                modal
+            )
+        )
+
+        main_window.show_modal(
+            modal
+        )
+
+    # =================================================
+    # Close modal
+    # =================================================
+
+    def close_category_modal(
+        self,
+        modal,
+    ) -> None:
         from PySide6.QtWidgets import QApplication
 
         main_window = QApplication.activeWindow()

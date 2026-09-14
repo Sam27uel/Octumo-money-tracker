@@ -8,7 +8,10 @@ DATABASE_PATH = DATA_DIRECTORY / "octumo.db"
 
 
 def get_connection() -> sqlite3.Connection:
-    DATA_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    DATA_DIRECTORY.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
@@ -34,6 +37,7 @@ def initialize_database() -> None:
                 name TEXT NOT NULL,
                 kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
                 color TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(name, kind)
             );
@@ -57,7 +61,8 @@ def initialize_database() -> None:
                 adjustment_date TEXT NOT NULL,
                 note TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                FOREIGN KEY (account_id) REFERENCES accounts(id)
+                    ON DELETE CASCADE
             );
             """
         )
@@ -68,12 +73,34 @@ def initialize_database() -> None:
             "PRAGMA table_info(accounts)"
         ).fetchall()
 
-        column_names = {column["name"] for column in account_columns}
+        account_column_names = {
+            column["name"]
+            for column in account_columns
+        }
 
-        if "is_active" not in column_names:
+        if "is_active" not in account_column_names:
             connection.execute(
                 """
                 ALTER TABLE accounts
+                ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+                """
+            )
+
+        # Migration for existing databases:
+        # Add is_active to categories if the column does not exist yet.
+        category_columns = connection.execute(
+            "PRAGMA table_info(categories)"
+        ).fetchall()
+
+        category_column_names = {
+            column["name"]
+            for column in category_columns
+        }
+
+        if "is_active" not in category_column_names:
+            connection.execute(
+                """
+                ALTER TABLE categories
                 ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
                 """
             )
