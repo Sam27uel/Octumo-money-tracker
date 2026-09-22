@@ -9,7 +9,6 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import (
     QButtonGroup,
-    QComboBox,
     QDateEdit,
     QFrame,
     QHBoxLayout,
@@ -26,14 +25,15 @@ from app.services.transaction_service import (
     get_transaction,
     update_transaction,
 )
+from app.ui.add_transaction_dialog import ModernComboBox
+from app.ui.date_picker import OctumoDateEdit
 
+
+# =========================================================
+# Transaction Type Selector
+# =========================================================
 
 class TransactionTypeSelector(QWidget):
-    """
-    Animated Income / Expense selector.
-
-    The dark indicator moves between the two buttons.
-    """
 
     type_changed = Signal(str)
 
@@ -46,7 +46,10 @@ class TransactionTypeSelector(QWidget):
 
         self.selected_kind = (
             selected_kind
-            if selected_kind in {"income", "expense"}
+            if selected_kind in {
+                "income",
+                "expense",
+            }
             else "income"
         )
 
@@ -56,21 +59,13 @@ class TransactionTypeSelector(QWidget):
             "transaction_type_selector"
         )
 
-        self.setFixedHeight(42)
-
-        # -------------------------------------------------
-        # Indicator
-        # -------------------------------------------------
+        self.setFixedHeight(44)
 
         self.indicator = QFrame(self)
 
         self.indicator.setObjectName(
             "transaction_type_indicator"
         )
-
-        # -------------------------------------------------
-        # Buttons
-        # -------------------------------------------------
 
         self.income_button = QPushButton(
             "Income",
@@ -93,17 +88,9 @@ class TransactionTypeSelector(QWidget):
         self.income_button.setCheckable(True)
         self.expense_button.setCheckable(True)
 
-        # -------------------------------------------------
-        # Button group
-        # -------------------------------------------------
+        self.type_group = QButtonGroup(self)
 
-        self.type_group = QButtonGroup(
-            self
-        )
-
-        self.type_group.setExclusive(
-            True
-        )
+        self.type_group.setExclusive(True)
 
         self.type_group.addButton(
             self.income_button
@@ -112,10 +99,6 @@ class TransactionTypeSelector(QWidget):
         self.type_group.addButton(
             self.expense_button
         )
-
-        # -------------------------------------------------
-        # Connections
-        # -------------------------------------------------
 
         self.income_button.clicked.connect(
             lambda: self.set_transaction_type(
@@ -129,10 +112,6 @@ class TransactionTypeSelector(QWidget):
             )
         )
 
-        # -------------------------------------------------
-        # Initial state
-        # -------------------------------------------------
-
         self.income_button.setChecked(
             self.selected_kind == "income"
         )
@@ -141,34 +120,31 @@ class TransactionTypeSelector(QWidget):
             self.selected_kind == "expense"
         )
 
-        # -------------------------------------------------
-        # Styling
-        # -------------------------------------------------
-
         self.setStyleSheet(
             """
             QWidget#transaction_type_selector {
-                background-color: #F8FAFC;
-                border: 1px solid #CBD5E1;
-                border-radius: 8px;
+                background-color: #F1F5F9;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
             }
 
             QFrame#transaction_type_indicator {
                 background-color: #0F172A;
-                border-radius: 7px;
+                border-radius: 9px;
             }
 
             QPushButton#transaction_type_button {
                 background-color: transparent;
                 color: #64748B;
+
                 border: none;
-                border-radius: 7px;
+                border-radius: 9px;
+
                 font-size: 14px;
                 font-weight: 600;
             }
 
             QPushButton#transaction_type_button:hover {
-                background-color: #F1F5F9;
                 color: #0F172A;
             }
 
@@ -184,73 +160,60 @@ class TransactionTypeSelector(QWidget):
             """
         )
 
-        self.indicator.lower()
-
-    # =====================================================
-    # Layout
-    # =====================================================
+        self.income_button.raise_()
+        self.expense_button.raise_()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-
-        self.update_layout(
-            animated=False
-        )
+        self.update_layout(animated=False)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-
-        self.update_layout(
-            animated=False
-        )
+        self.update_layout(animated=False)
 
     def update_layout(
         self,
         animated: bool = True,
     ) -> None:
+
         margin = 1
 
         available_width = (
             self.width() - 2 * margin
         )
 
-        half_width = available_width / 2
-
-        indicator_width = int(
-            half_width
-        )
-
-        if self.selected_kind == "income":
-            target_x = margin
-        else:
-            target_x = (
-                margin
-                + indicator_width
-            )
-
-        target_rect = QRect(
-            int(target_x),
-            margin,
-            indicator_width,
-            self.height() - 2 * margin,
+        button_width = (
+            available_width // 2
         )
 
         button_height = (
-            self.height()
-            - 2 * margin
+            self.height() - 2 * margin
+        )
+
+        target_x = (
+            margin
+            if self.selected_kind == "income"
+            else margin + button_width
+        )
+
+        target_rect = QRect(
+            target_x,
+            margin,
+            button_width,
+            button_height,
         )
 
         income_rect = QRect(
             margin,
             margin,
-            indicator_width,
+            button_width,
             button_height,
         )
 
         expense_rect = QRect(
-            margin + indicator_width,
+            margin + button_width,
             margin,
-            indicator_width,
+            available_width - button_width,
             button_height,
         )
 
@@ -289,17 +252,13 @@ class TransactionTypeSelector(QWidget):
         )
 
         self._animation = animation
-
         animation.start()
-
-    # =====================================================
-    # Change type
-    # =====================================================
 
     def set_transaction_type(
         self,
         kind: str,
     ) -> None:
+
         if kind not in {
             "income",
             "expense",
@@ -323,12 +282,15 @@ class TransactionTypeSelector(QWidget):
             animated=True
         )
 
-        self.type_changed.emit(
-            kind
-        )
+        self.type_changed.emit(kind)
 
+
+# =========================================================
+# Edit Transaction Dialog
+# =========================================================
 
 class EditTransactionDialog(QWidget):
+
     finished = Signal()
 
     def __init__(
@@ -338,9 +300,7 @@ class EditTransactionDialog(QWidget):
     ) -> None:
         super().__init__(parent)
 
-        self.transaction_id = (
-            transaction_id
-        )
+        self.transaction_id = transaction_id
 
         self.transaction = None
 
@@ -359,6 +319,7 @@ class EditTransactionDialog(QWidget):
     # =====================================================
 
     def build_ui(self) -> None:
+
         layout = QVBoxLayout(self)
 
         layout.setContentsMargins(
@@ -416,7 +377,9 @@ class EditTransactionDialog(QWidget):
 
         layout.addSpacing(16)
 
+        # -------------------------------------------------
         # Type
+        # -------------------------------------------------
 
         type_label = QLabel(
             "Type"
@@ -426,9 +389,7 @@ class EditTransactionDialog(QWidget):
             "field_label"
         )
 
-        layout.addWidget(
-            type_label
-        )
+        layout.addWidget(type_label)
 
         layout.addSpacing(7)
 
@@ -488,9 +449,7 @@ class EditTransactionDialog(QWidget):
 
         self.amount_input = QLineEdit()
 
-        self.amount_input.setFixedHeight(
-            42
-        )
+        self.amount_input.setFixedHeight(42)
 
         self.amount_input.setPlaceholderText(
             "0.00"
@@ -529,19 +488,7 @@ class EditTransactionDialog(QWidget):
             "field_label"
         )
 
-        self.date_input = QDateEdit()
-
-        self.date_input.setFixedHeight(
-            42
-        )
-
-        self.date_input.setCalendarPopup(
-            True
-        )
-
-        self.date_input.setDisplayFormat(
-            "dd.MM.yyyy"
-        )
+        self.date_input = OctumoDateEdit()
 
         date_layout.addWidget(
             date_label
@@ -607,15 +554,7 @@ class EditTransactionDialog(QWidget):
             "field_label"
         )
 
-        self.account_input = QComboBox()
-
-        self.account_input.setObjectName(
-            "form_combo"
-        )
-
-        self.account_input.setFixedHeight(
-            42
-        )
+        self.account_input = ModernComboBox()
 
         account_layout.addWidget(
             account_label
@@ -650,15 +589,7 @@ class EditTransactionDialog(QWidget):
             "field_label"
         )
 
-        self.category_input = QComboBox()
-
-        self.category_input.setObjectName(
-            "form_combo"
-        )
-
-        self.category_input.setFixedHeight(
-            42
-        )
+        self.category_input = ModernComboBox()
 
         category_layout.addWidget(
             category_label
@@ -694,13 +625,9 @@ class EditTransactionDialog(QWidget):
             "section_separator"
         )
 
-        separator.setFixedHeight(
-            1
-        )
+        separator.setFixedHeight(1)
 
-        layout.addWidget(
-            separator
-        )
+        layout.addWidget(separator)
 
         # -------------------------------------------------
         # Details
@@ -732,17 +659,13 @@ class EditTransactionDialog(QWidget):
 
         self.note_input = QLineEdit()
 
-        self.note_input.setFixedHeight(
-            42
-        )
+        self.note_input.setFixedHeight(42)
 
         self.note_input.setPlaceholderText(
             "Optional note"
         )
 
-        layout.addWidget(
-            note_label
-        )
+        layout.addWidget(note_label)
 
         layout.addSpacing(7)
 
@@ -760,10 +683,7 @@ class EditTransactionDialog(QWidget):
             "error_label"
         )
 
-        self.error_label.setWordWrap(
-            True
-        )
-
+        self.error_label.setWordWrap(True)
         self.error_label.hide()
 
         layout.addSpacing(8)
@@ -799,9 +719,7 @@ class EditTransactionDialog(QWidget):
             "cancel_button"
         )
 
-        self.cancel_button.setFixedHeight(
-            42
-        )
+        self.cancel_button.setFixedHeight(42)
 
         self.save_button = QPushButton(
             "Save changes"
@@ -811,9 +729,7 @@ class EditTransactionDialog(QWidget):
             "save_button"
         )
 
-        self.save_button.setFixedHeight(
-            42
-        )
+        self.save_button.setFixedHeight(42)
 
         buttons.addWidget(
             self.cancel_button
@@ -823,9 +739,7 @@ class EditTransactionDialog(QWidget):
             self.save_button
         )
 
-        layout.addLayout(
-            buttons
-        )
+        layout.addLayout(buttons)
 
         # -------------------------------------------------
         # Connections
@@ -880,9 +794,7 @@ class EditTransactionDialog(QWidget):
                 font-weight: 600;
             }
 
-            QLineEdit,
-            QDateEdit,
-            QComboBox {
+            QLineEdit {
                 background-color: #FFFFFF;
                 color: #0F172A;
 
@@ -895,44 +807,12 @@ class EditTransactionDialog(QWidget):
                 font-size: 14px;
             }
 
-            QLineEdit:focus,
-            QDateEdit:focus,
-            QComboBox:focus {
-                border: 1px solid #94A3B8;
+            QLineEdit:focus {
+                border-color: #94A3B8;
             }
 
             QLineEdit::placeholder {
                 color: #94A3B8;
-            }
-
-            QComboBox#form_combo {
-                padding-right: 8px;
-            }
-
-            QComboBox#form_combo::drop-down {
-                width: 28px;
-                border: none;
-                background: transparent;
-            }
-
-            QComboBox#form_combo QAbstractItemView {
-                background-color: #FFFFFF;
-                color: #0F172A;
-
-                border: none;
-
-                outline: none;
-
-                padding: 6px;
-
-                selection-background-color: #E2E8F0;
-                selection-color: #0F172A;
-            }
-
-            QDateEdit::drop-down {
-                width: 28px;
-                border: none;
-                background: transparent;
             }
 
             QFrame#section_separator {
@@ -987,10 +867,11 @@ class EditTransactionDialog(QWidget):
         )
 
     # =====================================================
-    # Load
+    # Load transaction
     # =====================================================
 
     def load_transaction(self) -> None:
+
         transaction = get_transaction(
             self.transaction_id
         )
@@ -1027,9 +908,7 @@ class EditTransactionDialog(QWidget):
 
         amount = (
             abs(
-                transaction[
-                    "amount_cents"
-                ]
+                transaction["amount_cents"]
             )
             / 100
         )
@@ -1041,16 +920,12 @@ class EditTransactionDialog(QWidget):
         # Date
 
         date = QDate.fromString(
-            transaction[
-                "transaction_date"
-            ],
+            transaction["transaction_date"],
             "yyyy-MM-dd",
         )
 
         if date.isValid():
-            self.date_input.setDate(
-                date
-            )
+            self.date_input.setDate(date)
         else:
             self.date_input.setDate(
                 QDate.currentDate()
@@ -1059,17 +934,13 @@ class EditTransactionDialog(QWidget):
         # Account
 
         self.load_accounts(
-            transaction[
-                "account_id"
-            ]
+            transaction["account_id"]
         )
 
         # Category
 
         self.load_categories(
-            transaction[
-                "category_id"
-            ]
+            transaction["category_id"]
         )
 
         # Note
@@ -1086,6 +957,7 @@ class EditTransactionDialog(QWidget):
         self,
         selected_id=None,
     ) -> None:
+
         self.accounts = list_accounts()
 
         self.account_input.clear()
@@ -1116,9 +988,8 @@ class EditTransactionDialog(QWidget):
         self,
         selected_id=None,
     ) -> None:
-        kind = (
-            self.type_input.selected_kind
-        )
+
+        kind = self.type_input.selected_kind
 
         self.categories = list_categories(
             kind=kind,
@@ -1153,6 +1024,7 @@ class EditTransactionDialog(QWidget):
         self,
         kind: str,
     ) -> None:
+
         self.load_categories()
 
     # =====================================================
@@ -1160,6 +1032,7 @@ class EditTransactionDialog(QWidget):
     # =====================================================
 
     def parse_amount(self):
+
         value = (
             self.amount_input
             .text()
@@ -1177,9 +1050,8 @@ class EditTransactionDialog(QWidget):
         )
 
         try:
-            amount = Decimal(
-                value
-            )
+            amount = Decimal(value)
+
         except InvalidOperation:
             return None
 
@@ -1190,13 +1062,18 @@ class EditTransactionDialog(QWidget):
             amount * 100
         )
 
-        return cents if cents > 0 else None
+        return (
+            cents
+            if cents > 0
+            else None
+        )
 
     # =====================================================
     # Save
     # =====================================================
 
     def save_transaction(self) -> None:
+
         self.clear_error()
 
         if self.transaction is None:
@@ -1225,23 +1102,20 @@ class EditTransactionDialog(QWidget):
             )
             return
 
-        amount_cents = (
-            self.parse_amount()
-        )
+        amount_cents = self.parse_amount()
 
         if amount_cents is None:
             self.show_error(
                 "Enter a valid amount greater than 0."
             )
+
             self.amount_input.setFocus()
             return
 
         transaction_date = (
             self.date_input
             .date()
-            .toString(
-                "yyyy-MM-dd"
-            )
+            .toString("yyyy-MM-dd")
         )
 
         note = (
@@ -1252,20 +1126,13 @@ class EditTransactionDialog(QWidget):
 
         try:
             update_transaction(
-                transaction_id=(
-                    self.transaction_id
-                ),
+                transaction_id=self.transaction_id,
                 account_id=account_id,
                 category_id=category_id,
                 amount_cents=amount_cents,
-                transaction_date=(
-                    transaction_date
-                ),
+                transaction_date=transaction_date,
                 note=note,
-                kind=(
-                    self.type_input
-                    .selected_kind
-                ),
+                kind=self.type_input.selected_kind,
             )
 
         except ValueError as error:
@@ -1290,6 +1157,7 @@ class EditTransactionDialog(QWidget):
         self,
         message: str,
     ) -> None:
+
         self.error_label.setText(
             message
         )
@@ -1297,6 +1165,7 @@ class EditTransactionDialog(QWidget):
         self.error_label.show()
 
     def clear_error(self) -> None:
+
         self.error_label.clear()
         self.error_label.hide()
 
