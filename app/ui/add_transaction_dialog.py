@@ -8,6 +8,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
 )
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -28,12 +29,14 @@ from app.services.category_service import list_categories
 from app.services.transaction_service import create_transaction
 
 
+# =========================================================
+# Modern combo box
+# =========================================================
+
+
 class ModernComboBox(QComboBox):
     """
-    Modern Octumo-style combo box.
-
-    Uses a clean QListView popup without the default
-    sharp macOS/Qt styling.
+    Octumo-style combo box with a clean popup.
     """
 
     def __init__(self, parent=None) -> None:
@@ -45,9 +48,9 @@ class ModernComboBox(QComboBox):
 
         self.setFixedHeight(42)
 
-        # ---------------------------------------------------------
-        # CUSTOM POPUP VIEW
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Popup view
+        # -------------------------------------------------
 
         view = QListView()
 
@@ -64,7 +67,6 @@ class ModernComboBox(QComboBox):
         )
 
         view.setSpacing(2)
-
         view.setUniformItemSizes(True)
 
         view.setHorizontalScrollBarPolicy(
@@ -83,18 +85,17 @@ class ModernComboBox(QComboBox):
             Qt.FocusPolicy.NoFocus
         )
 
-        # ---------------------------------------------------------
-        # POPUP WINDOW
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Popup window
+        # -------------------------------------------------
 
         view.setWindowFlags(
             Qt.WindowType.Popup
             | Qt.WindowType.FramelessWindowHint
         )
 
-        # IMPORTANT:
-        # Do NOT use WA_TranslucentBackground here.
-        # On macOS this can cause the popup to render black.
+        # Important on macOS:
+        # translucent popup can render black.
         view.setAttribute(
             Qt.WidgetAttribute.WA_TranslucentBackground,
             False,
@@ -104,24 +105,24 @@ class ModernComboBox(QComboBox):
             True
         )
 
-        # ---------------------------------------------------------
-        # POPUP PALETTE
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Popup palette
+        # -------------------------------------------------
 
         palette = view.palette()
 
         palette.setColor(
-            view.palette().ColorRole.Window,
+            QPalette.ColorRole.Window,
             Qt.GlobalColor.white,
         )
 
         palette.setColor(
-            view.palette().ColorRole.Base,
+            QPalette.ColorRole.Base,
             Qt.GlobalColor.white,
         )
 
         palette.setColor(
-            view.palette().ColorRole.Text,
+            QPalette.ColorRole.Text,
             Qt.GlobalColor.black,
         )
 
@@ -129,17 +130,11 @@ class ModernComboBox(QComboBox):
             palette
         )
 
-        # ---------------------------------------------------------
-        # ASSIGN VIEW
-        # ---------------------------------------------------------
+        self.setView(view)
 
-        self.setView(
-            view
-        )
-
-        # ---------------------------------------------------------
-        # COMBO + POPUP STYLE
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Styling
+        # -------------------------------------------------
 
         self.setStyleSheet(
             """
@@ -157,11 +152,11 @@ class ModernComboBox(QComboBox):
             }
 
             QComboBox#modern_combo_box:hover {
-                border: 1px solid #94A3B8;
+                border-color: #94A3B8;
             }
 
             QComboBox#modern_combo_box:focus {
-                border: 1px solid #64748B;
+                border-color: #64748B;
                 background-color: #FFFFFF;
             }
 
@@ -173,14 +168,12 @@ class ModernComboBox(QComboBox):
 
             QListView#modern_combo_popup {
                 background-color: #FFFFFF;
-
                 color: #0F172A;
 
                 border: 1px solid #E2E8F0;
                 border-radius: 12px;
 
                 padding: 6px;
-
                 outline: none;
             }
 
@@ -238,9 +231,7 @@ class ModernComboBox(QComboBox):
             QListView#modern_combo_popup QScrollBar::add-line:vertical,
             QListView#modern_combo_popup QScrollBar::sub-line:vertical {
                 height: 0px;
-
                 border: none;
-
                 background: transparent;
             }
 
@@ -252,12 +243,28 @@ class ModernComboBox(QComboBox):
         )
 
 
+# =========================================================
+# Transaction type selector
+# =========================================================
+
+
 class TransactionTypeSelector(QWidget):
-    def __init__(self, parent=None) -> None:
+    """
+    Animated Income / Expense selector.
+
+    Income  -> left
+    Expense -> right
+    """
+
+    type_changed = Signal(str)
+
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
 
         self.selected_kind = "income"
-
         self._animation = None
 
         self.setObjectName(
@@ -266,9 +273,9 @@ class TransactionTypeSelector(QWidget):
 
         self.setFixedHeight(44)
 
-        # ---------------------------------------------------------
-        # INDICATOR
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Indicator
+        # -------------------------------------------------
 
         self.indicator = QFrame(
             self
@@ -278,9 +285,9 @@ class TransactionTypeSelector(QWidget):
             "transaction_type_indicator"
         )
 
-        # ---------------------------------------------------------
-        # BUTTONS
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Buttons
+        # -------------------------------------------------
 
         self.income_button = QPushButton(
             "Income",
@@ -308,13 +315,9 @@ class TransactionTypeSelector(QWidget):
             True
         )
 
-        self.income_button.setChecked(
-            True
-        )
-
-        # ---------------------------------------------------------
-        # BUTTON GROUP
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Group
+        # -------------------------------------------------
 
         self.type_group = QButtonGroup(
             self
@@ -332,6 +335,14 @@ class TransactionTypeSelector(QWidget):
             self.expense_button
         )
 
+        self.income_button.setChecked(
+            True
+        )
+
+        # -------------------------------------------------
+        # Connections
+        # -------------------------------------------------
+
         self.income_button.clicked.connect(
             lambda: self.set_transaction_type(
                 "income"
@@ -344,50 +355,47 @@ class TransactionTypeSelector(QWidget):
             )
         )
 
-        # ---------------------------------------------------------
-        # STYLE
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Styling
+        # -------------------------------------------------
 
         self.setStyleSheet(
             """
             QWidget#transaction_type_selector {
-                background-color: #F1F5F9;
+                background-color: #F8FAFC;
 
-                border: 1px solid #E2E8F0;
-                border-radius: 10px;
+                border: 1px solid #CBD5E1;
+                border-radius: 9px;
             }
 
             QFrame#transaction_type_indicator {
                 background-color: #0F172A;
-
-                border-radius: 9px;
+                border-radius: 8px;
             }
 
             QPushButton#transaction_type_button {
                 background-color: transparent;
-
                 color: #64748B;
 
                 border: none;
-                border-radius: 9px;
+                border-radius: 8px;
 
                 font-size: 14px;
                 font-weight: 600;
             }
 
             QPushButton#transaction_type_button:hover {
+                background-color: #F1F5F9;
                 color: #0F172A;
             }
 
             QPushButton#transaction_type_button:checked {
                 background-color: transparent;
-
                 color: #FFFFFF;
             }
 
             QPushButton#transaction_type_button:checked:hover {
                 background-color: transparent;
-
                 color: #FFFFFF;
             }
             """
@@ -396,27 +404,19 @@ class TransactionTypeSelector(QWidget):
         self.income_button.raise_()
         self.expense_button.raise_()
 
-    def showEvent(
-        self,
-        event,
-    ) -> None:
+    # -----------------------------------------------------
+    # Layout
+    # -----------------------------------------------------
 
-        super().showEvent(
-            event
-        )
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
 
         self.update_layout(
             animated=False
         )
 
-    def resizeEvent(
-        self,
-        event,
-    ) -> None:
-
-        super().resizeEvent(
-            event
-        )
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
 
         self.update_layout(
             animated=False
@@ -426,7 +426,6 @@ class TransactionTypeSelector(QWidget):
         self,
         animated: bool = True,
     ) -> None:
-
         margin = 1
 
         available_width = (
@@ -444,17 +443,14 @@ class TransactionTypeSelector(QWidget):
         )
 
         if self.selected_kind == "income":
-
             target_x = margin
-
         else:
-
             target_x = (
                 margin
                 + button_width
             )
 
-        target_rect = QRect(
+        indicator_rect = QRect(
             target_x,
             margin,
             button_width,
@@ -475,20 +471,18 @@ class TransactionTypeSelector(QWidget):
             button_height,
         )
 
+        self.income_button.setGeometry(
+            income_rect
+        )
+
+        self.expense_button.setGeometry(
+            expense_rect
+        )
+
         if not animated:
-
             self.indicator.setGeometry(
-                target_rect
+                indicator_rect
             )
-
-            self.income_button.setGeometry(
-                income_rect
-            )
-
-            self.expense_button.setGeometry(
-                expense_rect
-            )
-
             return
 
         animation = QPropertyAnimation(
@@ -506,7 +500,7 @@ class TransactionTypeSelector(QWidget):
         )
 
         animation.setEndValue(
-            target_rect
+            indicator_rect
         )
 
         animation.setEasingCurve(
@@ -517,50 +511,86 @@ class TransactionTypeSelector(QWidget):
 
         animation.start()
 
+    # -----------------------------------------------------
+    # Change type
+    # -----------------------------------------------------
+
     def set_transaction_type(
         self,
         kind: str,
     ) -> None:
+        if kind not in {
+            "income",
+            "expense",
+        }:
+            return
 
         if kind == self.selected_kind:
+            self.income_button.setChecked(
+                kind == "income"
+            )
+
+            self.expense_button.setChecked(
+                kind == "expense"
+            )
+
+            self.update_layout(
+                animated=False
+            )
+
             return
 
         self.selected_kind = kind
+
+        self.income_button.setChecked(
+            kind == "income"
+        )
+
+        self.expense_button.setChecked(
+            kind == "expense"
+        )
 
         self.update_layout(
             animated=True
         )
 
+        self.type_changed.emit(
+            kind
+        )
+
+
+# =========================================================
+# Add transaction dialog
+# =========================================================
+
 
 class AddTransactionDialog(QWidget):
-
     finished = Signal()
 
     def __init__(
         self,
         parent=None,
     ) -> None:
-
         super().__init__(
             parent
         )
+
+        self.accounts = []
+        self.categories = []
 
         self.setObjectName(
             "add_transaction_dialog"
         )
 
         self.build_ui()
-
         self.load_accounts()
-
         self.load_categories()
 
-    # =============================================================
+    # =====================================================
     # UI
-    # =============================================================
+    # =====================================================
 
     def build_ui(self) -> None:
-
         layout = QVBoxLayout(
             self
         )
@@ -572,13 +602,11 @@ class AddTransactionDialog(QWidget):
             0,
         )
 
-        layout.setSpacing(
-            0
-        )
+        layout.setSpacing(0)
 
-        # ---------------------------------------------------------
-        # HEADER
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Header
+        # -------------------------------------------------
 
         title = QLabel(
             "Add transaction"
@@ -605,20 +633,20 @@ class AddTransactionDialog(QWidget):
         )
 
         layout.addSpacing(
-            5
+            6
         )
 
         layout.addWidget(
             subtitle
         )
 
-        layout.addSpacing(
-            24
-        )
+        # -------------------------------------------------
+        # Transaction section
+        # -------------------------------------------------
 
-        # ---------------------------------------------------------
-        # TRANSACTION
-        # ---------------------------------------------------------
+        layout.addSpacing(
+            30
+        )
 
         transaction_title = QLabel(
             "Transaction"
@@ -633,12 +661,12 @@ class AddTransactionDialog(QWidget):
         )
 
         layout.addSpacing(
-            14
+            18
         )
 
-        # ---------------------------------------------------------
-        # TYPE
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Type
+        # -------------------------------------------------
 
         type_label = QLabel(
             "Type"
@@ -648,46 +676,33 @@ class AddTransactionDialog(QWidget):
             "field_label"
         )
 
+        layout.addWidget(
+            type_label
+        )
+
+        layout.addSpacing(
+            7
+        )
+
         self.type_input = (
             TransactionTypeSelector()
         )
 
-        type_container = QWidget()
-
-        type_layout = QVBoxLayout(
-            type_container
-        )
-
-        type_layout.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
-        )
-
-        type_layout.setSpacing(
-            7
-        )
-
-        type_layout.addWidget(
-            type_label
-        )
-
-        type_layout.addWidget(
+        layout.addWidget(
             self.type_input
         )
 
-        layout.addWidget(
-            type_container
+        self.type_input.type_changed.connect(
+            self.on_type_changed
         )
+
+        # -------------------------------------------------
+        # Amount / Date / Account / Category
+        # -------------------------------------------------
 
         layout.addSpacing(
-            15
+            18
         )
-
-        # ---------------------------------------------------------
-        # GRID
-        # ---------------------------------------------------------
 
         fields_grid = QGridLayout()
 
@@ -699,16 +714,14 @@ class AddTransactionDialog(QWidget):
         )
 
         fields_grid.setHorizontalSpacing(
-            14
+            18
         )
 
         fields_grid.setVerticalSpacing(
             15
         )
 
-        # ---------------------------------------------------------
-        # AMOUNT
-        # ---------------------------------------------------------
+        # Amount
 
         amount_container = (
             self.create_field_container(
@@ -730,9 +743,7 @@ class AddTransactionDialog(QWidget):
             self.amount_input
         )
 
-        # ---------------------------------------------------------
-        # DATE
-        # ---------------------------------------------------------
+        # Date
 
         date_container = (
             self.create_field_container(
@@ -762,9 +773,7 @@ class AddTransactionDialog(QWidget):
             self.date_input
         )
 
-        # ---------------------------------------------------------
-        # ACCOUNT
-        # ---------------------------------------------------------
+        # Account
 
         account_container = (
             self.create_field_container(
@@ -780,9 +789,7 @@ class AddTransactionDialog(QWidget):
             self.account_input
         )
 
-        # ---------------------------------------------------------
-        # CATEGORY
-        # ---------------------------------------------------------
+        # Category
 
         category_container = (
             self.create_field_container(
@@ -798,9 +805,7 @@ class AddTransactionDialog(QWidget):
             self.category_input
         )
 
-        # ---------------------------------------------------------
-        # GRID PLACEMENT
-        # ---------------------------------------------------------
+        # Grid
 
         fields_grid.addWidget(
             amount_container,
@@ -828,47 +833,51 @@ class AddTransactionDialog(QWidget):
 
         fields_grid.setColumnStretch(
             0,
-            1
+            1,
         )
 
         fields_grid.setColumnStretch(
             1,
-            1
+            1,
         )
 
         layout.addLayout(
             fields_grid
         )
 
+        # -------------------------------------------------
+        # Separator
+        # -------------------------------------------------
+
         layout.addSpacing(
-            23
+            22
         )
 
-        # ---------------------------------------------------------
-        # SEPARATOR
-        # ---------------------------------------------------------
-
         separator = QFrame()
+
+        separator.setObjectName(
+            "dialog_separator"
+        )
 
         separator.setFrameShape(
             QFrame.Shape.HLine
         )
 
-        separator.setObjectName(
-            "dialog_separator"
+        separator.setFixedHeight(
+            1
         )
 
         layout.addWidget(
             separator
         )
 
-        layout.addSpacing(
-            21
-        )
+        # -------------------------------------------------
+        # Details
+        # -------------------------------------------------
 
-        # ---------------------------------------------------------
-        # DETAILS
-        # ---------------------------------------------------------
+        layout.addSpacing(
+            22
+        )
 
         details_title = QLabel(
             "Details"
@@ -883,12 +892,8 @@ class AddTransactionDialog(QWidget):
         )
 
         layout.addSpacing(
-            13
+            15
         )
-
-        # ---------------------------------------------------------
-        # NOTE
-        # ---------------------------------------------------------
 
         note_container = (
             self.create_field_container(
@@ -914,14 +919,14 @@ class AddTransactionDialog(QWidget):
             note_container
         )
 
-        # ---------------------------------------------------------
-        # ERROR
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Error
+        # -------------------------------------------------
 
         self.error_label = QLabel()
 
         self.error_label.setObjectName(
-            "dialog_error"
+            "error_label"
         )
 
         self.error_label.setWordWrap(
@@ -931,16 +936,16 @@ class AddTransactionDialog(QWidget):
         self.error_label.hide()
 
         layout.addSpacing(
-            10
+            8
         )
 
         layout.addWidget(
             self.error_label
         )
 
-        # ---------------------------------------------------------
-        # BUTTONS
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Buttons
+        # -------------------------------------------------
 
         layout.addSpacing(
             20
@@ -961,64 +966,60 @@ class AddTransactionDialog(QWidget):
 
         buttons_layout.addStretch()
 
-        self.cancel_button = QPushButton(
+        cancel_button = QPushButton(
             "Cancel"
         )
 
-        self.cancel_button.setObjectName(
+        cancel_button.setObjectName(
             "dialog_cancel_button"
         )
 
-        self.cancel_button.setFixedHeight(
+        cancel_button.setFixedHeight(
             42
         )
 
-        self.cancel_button.clicked.connect(
-            self.close_dialog
+        cancel_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
         )
 
-        buttons_layout.addWidget(
-            self.cancel_button
-        )
-
-        self.save_button = QPushButton(
+        save_button = QPushButton(
             "Add transaction"
         )
 
-        self.save_button.setObjectName(
+        save_button.setObjectName(
             "dialog_primary_button"
         )
 
-        self.save_button.setFixedHeight(
+        save_button.setFixedHeight(
             42
         )
 
-        self.save_button.setMinimumWidth(
-            145
-        )
-
-        self.save_button.clicked.connect(
-            self.save_transaction
+        save_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
         )
 
         buttons_layout.addWidget(
-            self.save_button
+            cancel_button
+        )
+
+        buttons_layout.addWidget(
+            save_button
         )
 
         layout.addLayout(
             buttons_layout
         )
 
-        # ---------------------------------------------------------
-        # SIGNALS
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Connections
+        # -------------------------------------------------
 
-        self.type_input.income_button.clicked.connect(
-            self.load_categories
+        cancel_button.clicked.connect(
+            self.close_dialog
         )
 
-        self.type_input.expense_button.clicked.connect(
-            self.load_categories
+        save_button.clicked.connect(
+            self.save_transaction
         )
 
         self.amount_input.returnPressed.connect(
@@ -1029,9 +1030,9 @@ class AddTransactionDialog(QWidget):
             self.save_transaction
         )
 
-        # ---------------------------------------------------------
-        # STYLE
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # Main styling
+        # -------------------------------------------------
 
         self.setStyleSheet(
             """
@@ -1041,28 +1042,24 @@ class AddTransactionDialog(QWidget):
 
             QLabel#dialog_title {
                 color: #0F172A;
-
-                font-size: 25px;
+                font-size: 28px;
                 font-weight: 700;
             }
 
             QLabel#dialog_subtitle {
                 color: #64748B;
-
-                font-size: 14px;
+                font-size: 15px;
             }
 
             QLabel#section_title {
                 color: #0F172A;
-
-                font-size: 16px;
+                font-size: 22px;
                 font-weight: 700;
             }
 
             QLabel#field_label {
                 color: #334155;
-
-                font-size: 13px;
+                font-size: 15px;
                 font-weight: 600;
             }
 
@@ -1078,43 +1075,36 @@ class AddTransactionDialog(QWidget):
                 padding-right: 12px;
 
                 font-size: 14px;
-
-                selection-background-color: #E2E8F0;
-                selection-color: #0F172A;
             }
 
             QLineEdit:hover,
             QDateEdit:hover {
-                border: 1px solid #94A3B8;
+                border-color: #94A3B8;
             }
 
             QLineEdit:focus,
             QDateEdit:focus {
-                border: 1px solid #64748B;
-
-                background-color: #FFFFFF;
+                border-color: #64748B;
             }
 
-            QDateEdit {
-                padding-right: 32px;
+            QLineEdit::placeholder {
+                color: #94A3B8;
             }
 
             QDateEdit::drop-down {
                 width: 30px;
-
                 border: none;
-
                 background: transparent;
             }
 
             QFrame#dialog_separator {
                 background-color: #E2E8F0;
-                color: #E2E8F0;
-
                 border: none;
+            }
 
-                min-height: 1px;
-                max-height: 1px;
+            QLabel#error_label {
+                color: #B91C1C;
+                font-size: 13px;
             }
 
             QPushButton#dialog_cancel_button {
@@ -1124,8 +1114,7 @@ class AddTransactionDialog(QWidget):
                 border: 1px solid #CBD5E1;
                 border-radius: 9px;
 
-                padding-left: 17px;
-                padding-right: 17px;
+                padding: 0 18px;
 
                 font-size: 14px;
                 font-weight: 600;
@@ -1133,12 +1122,7 @@ class AddTransactionDialog(QWidget):
 
             QPushButton#dialog_cancel_button:hover {
                 background-color: #F8FAFC;
-
                 border-color: #94A3B8;
-            }
-
-            QPushButton#dialog_cancel_button:pressed {
-                background-color: #F1F5F9;
             }
 
             QPushButton#dialog_primary_button {
@@ -1148,8 +1132,7 @@ class AddTransactionDialog(QWidget):
                 border: none;
                 border-radius: 9px;
 
-                padding-left: 18px;
-                padding-right: 18px;
+                padding: 0 18px;
 
                 font-size: 14px;
                 font-weight: 600;
@@ -1162,39 +1145,31 @@ class AddTransactionDialog(QWidget):
             QPushButton#dialog_primary_button:pressed {
                 background-color: #334155;
             }
-
-            QLabel#dialog_error {
-                color: #DC2626;
-
-                font-size: 13px;
-                font-weight: 500;
-            }
             """
         )
 
-    # =============================================================
-    # FIELD CONTAINER
-    # =============================================================
+    # =====================================================
+    # Field helper
+    # =====================================================
 
     def create_field_container(
         self,
         label_text: str,
     ) -> QWidget:
-
         container = QWidget()
 
-        container_layout = QVBoxLayout(
+        layout = QVBoxLayout(
             container
         )
 
-        container_layout.setContentsMargins(
+        layout.setContentsMargins(
             0,
             0,
             0,
             0,
         )
 
-        container_layout.setSpacing(
+        layout.setSpacing(
             7
         )
 
@@ -1206,175 +1181,161 @@ class AddTransactionDialog(QWidget):
             "field_label"
         )
 
-        container_layout.addWidget(
+        layout.addWidget(
             label
         )
 
         return container
 
-    # =============================================================
-    # ACCOUNTS
-    # =============================================================
+    # =====================================================
+    # Data
+    # =====================================================
 
     def load_accounts(self) -> None:
+        self.accounts = list_accounts()
 
         self.account_input.clear()
 
-        accounts = list_accounts()
-
-        for account in accounts:
-
+        for account in self.accounts:
             self.account_input.addItem(
                 account["name"],
                 account["id"],
             )
 
-        if not accounts:
-
-            self.account_input.addItem(
-                "No accounts available",
-                None,
+        if not self.accounts:
+            self.show_error(
+                "Create an account before adding a transaction."
             )
 
-    # =============================================================
-    # CATEGORIES
-    # =============================================================
-
     def load_categories(self) -> None:
+        self.refresh_categories()
 
-        self.category_input.clear()
-
+    def refresh_categories(self) -> None:
         kind = (
             self.type_input.selected_kind
         )
 
-        categories = list_categories(
-            kind=kind
+        self.categories = list_categories(
+            kind=kind,
+            include_archived=False,
         )
 
-        for category in categories:
+        self.category_input.clear()
 
+        for category in self.categories:
             self.category_input.addItem(
                 category["name"],
                 category["id"],
             )
 
-        if not categories:
-
-            self.category_input.addItem(
-                "No categories available",
-                None,
+        if not self.categories:
+            self.show_error(
+                "Create a category for this transaction type first."
             )
+        else:
+            self.clear_error()
 
-    # =============================================================
-    # SAVE
-    # =============================================================
+    # =====================================================
+    # Type
+    # =====================================================
+
+    def on_type_changed(
+        self,
+        kind: str,
+    ) -> None:
+        self.refresh_categories()
+
+    # =====================================================
+    # Amount
+    # =====================================================
+
+    def parse_amount(self) -> int | None:
+        raw_value = (
+            self.amount_input
+            .text()
+            .strip()
+        )
+
+        if not raw_value:
+            return None
+
+        normalized = (
+            raw_value
+            .replace("€", "")
+            .replace(" ", "")
+            .replace(",", ".")
+        )
+
+        try:
+            amount = Decimal(
+                normalized
+            )
+        except InvalidOperation:
+            return None
+
+        if amount <= 0:
+            return None
+
+        cents = int(
+            amount * 100
+        )
+
+        if cents <= 0:
+            return None
+
+        return cents
+
+    # =====================================================
+    # Save
+    # =====================================================
 
     def save_transaction(self) -> None:
+        self.clear_error()
 
-        self.error_label.hide()
+        if not self.accounts:
+            self.show_error(
+                "Create an account before adding a transaction."
+            )
+            return
 
-        # ---------------------------------------------------------
-        # ACCOUNT
-        # ---------------------------------------------------------
+        if not self.categories:
+            self.show_error(
+                "Create a category for this transaction type first."
+            )
+            return
 
         account_id = (
             self.account_input.currentData()
         )
 
-        if account_id is None:
-
-            self.show_error(
-                "Please select an account."
-            )
-
-            self.account_input.setFocus()
-
-            return
-
-        # ---------------------------------------------------------
-        # CATEGORY
-        # ---------------------------------------------------------
-
         category_id = (
             self.category_input.currentData()
         )
 
-        if category_id is None:
+        if account_id is None:
+            self.show_error(
+                "Please select an account."
+            )
+            return
 
+        if category_id is None:
             self.show_error(
                 "Please select a category."
             )
-
-            self.category_input.setFocus()
-
             return
 
-        # ---------------------------------------------------------
-        # AMOUNT
-        # ---------------------------------------------------------
-
-        amount_text = (
-            self.amount_input
-            .text()
-            .strip()
-            .replace(",", ".")
+        amount_cents = (
+            self.parse_amount()
         )
 
-        if not amount_text:
-
+        if amount_cents is None:
             self.show_error(
-                "Please enter an amount."
+                "Enter a valid amount greater than 0."
             )
 
             self.amount_input.setFocus()
 
             return
-
-        try:
-
-            amount = Decimal(
-                amount_text
-            )
-
-        except InvalidOperation:
-
-            self.show_error(
-                "Please enter a valid amount."
-            )
-
-            self.amount_input.setFocus()
-
-            return
-
-        if amount <= 0:
-
-            self.show_error(
-                "Amount must be greater than zero."
-            )
-
-            self.amount_input.setFocus()
-
-            return
-
-        amount_cents = int(
-            amount
-            * Decimal("100")
-        )
-
-        if amount_cents <= 0:
-
-            self.show_error(
-                "Amount must be greater than zero."
-            )
-
-            self.amount_input.setFocus()
-
-            return
-
-        # ---------------------------------------------------------
-        # DATE
-        # ---------------------------------------------------------
 
         transaction_date = (
             self.date_input
@@ -1384,80 +1345,53 @@ class AddTransactionDialog(QWidget):
             )
         )
 
-        # ---------------------------------------------------------
-        # NOTE
-        # ---------------------------------------------------------
-
-        note = (
-            self.note_input
-            .text()
-            .strip()
-        )
-
-        # ---------------------------------------------------------
-        # TYPE
-        # ---------------------------------------------------------
-
-        kind = (
-            self.type_input.selected_kind
-        )
-
-        # ---------------------------------------------------------
-        # CREATE
-        # ---------------------------------------------------------
-
         try:
-
             create_transaction(
                 account_id=account_id,
                 category_id=category_id,
                 amount_cents=amount_cents,
                 transaction_date=transaction_date,
-                note=note,
-                kind=kind,
+                note=self.note_input.text(),
+                kind=(
+                    self.type_input.selected_kind
+                ),
             )
 
         except ValueError as error:
-
             self.show_error(
                 str(error)
             )
-
             return
 
-        except Exception:
-
+        except Exception as error:
             self.show_error(
-                "An unexpected error occurred while saving the transaction."
+                f"Could not save transaction: {error}"
             )
-
             return
-
-        # ---------------------------------------------------------
-        # SUCCESS
-        # ---------------------------------------------------------
 
         self.finished.emit()
 
-    # =============================================================
-    # ERROR
-    # =============================================================
+    # =====================================================
+    # Error
+    # =====================================================
 
     def show_error(
         self,
         message: str,
     ) -> None:
-
         self.error_label.setText(
             message
         )
 
         self.error_label.show()
 
-    # =============================================================
-    # CLOSE
-    # =============================================================
+    def clear_error(self) -> None:
+        self.error_label.clear()
+        self.error_label.hide()
+
+    # =====================================================
+    # Close
+    # =====================================================
 
     def close_dialog(self) -> None:
-
         self.finished.emit()

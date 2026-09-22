@@ -9,12 +9,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.services.transaction_service import list_transactions
-from app.ui.add_transaction_dialog import AddTransactionDialog
+from app.services.transaction_service import (
+    delete_transaction,
+    list_transactions,
+)
+
+from app.ui.add_transaction_dialog import (
+    AddTransactionDialog,
+)
+
+from app.ui.edit_transaction_dialog import (
+    EditTransactionDialog,
+)
+
+from app.ui.modal import Modal
 
 
 class TransactionsView(QWidget):
-    def __init__(self, parent=None) -> None:
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
 
         self.build_ui()
@@ -194,6 +209,10 @@ class TransactionsView(QWidget):
                 background-color: #1E293B;
             }
 
+            QPushButton#primary_button:pressed {
+                background-color: #334155;
+            }
+
             QScrollArea#transactions_scroll {
                 background-color: transparent;
                 border: none;
@@ -240,6 +259,39 @@ class TransactionsView(QWidget):
                 color: #B91C1C;
                 font-size: 15px;
                 font-weight: 700;
+            }
+
+            QPushButton#transaction_edit_button {
+                background-color: #FFFFFF;
+                color: #475569;
+
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            QPushButton#transaction_edit_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+                border-color: #94A3B8;
+            }
+
+            QPushButton#transaction_delete_button {
+                background-color: #FFFFFF;
+                color: #B91C1C;
+
+                border: 1px solid #FCA5A5;
+                border-radius: 8px;
+
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            QPushButton#transaction_delete_button:hover {
+                background-color: #FEF2F2;
+                border-color: #F87171;
             }
 
             QLabel#empty_state {
@@ -308,7 +360,7 @@ class TransactionsView(QWidget):
         return container
 
     # =================================================
-    # Transactions
+    # Refresh
     # =================================================
 
     def refresh_transactions(self) -> None:
@@ -352,21 +404,27 @@ class TransactionsView(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
+    # =================================================
+    # Transaction card
+    # =================================================
+
     def add_transaction_card(
         self,
         transaction,
     ) -> None:
+        transaction_id = transaction[
+            "id"
+        ]
+
         amount_cents = transaction[
             "amount_cents"
         ]
 
-        amount = abs(amount_cents) / 100
+        amount = abs(
+            amount_cents
+        ) / 100
 
         is_income = amount_cents > 0
-
-        # -------------------------------------------------
-        # Card
-        # -------------------------------------------------
 
         card = QWidget()
 
@@ -381,7 +439,7 @@ class TransactionsView(QWidget):
         card_layout.setContentsMargins(
             22,
             16,
-            22,
+            18,
             16,
         )
 
@@ -390,7 +448,7 @@ class TransactionsView(QWidget):
         )
 
         # -------------------------------------------------
-        # Main information
+        # Information
         # -------------------------------------------------
 
         information_layout = QVBoxLayout()
@@ -511,12 +569,95 @@ class TransactionsView(QWidget):
             amount_label
         )
 
+        # -------------------------------------------------
+        # Actions
+        # -------------------------------------------------
+
+        actions_layout = QHBoxLayout()
+
+        actions_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        actions_layout.setSpacing(
+            8
+        )
+
+        edit_button = QPushButton(
+            "Edit"
+        )
+
+        edit_button.setObjectName(
+            "transaction_edit_button"
+        )
+
+        edit_button.setFixedSize(
+            62,
+            36,
+        )
+
+        edit_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        edit_button.clicked.connect(
+            lambda checked=False,
+            transaction_id=transaction_id:
+            self.open_edit_transaction(
+                transaction_id
+            )
+        )
+
+        delete_button = QPushButton(
+            "Delete"
+        )
+
+        delete_button.setObjectName(
+            "transaction_delete_button"
+        )
+
+        delete_button.setFixedSize(
+            68,
+            36,
+        )
+
+        delete_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        delete_button.clicked.connect(
+            lambda checked=False,
+            transaction_id=transaction_id,
+            category_name=category_name,
+            amount_label=amount_label:
+            self.confirm_delete_transaction(
+                transaction_id,
+                category_name,
+                amount_label.text(),
+            )
+        )
+
+        actions_layout.addWidget(
+            edit_button
+        )
+
+        actions_layout.addWidget(
+            delete_button
+        )
+
+        card_layout.addLayout(
+            actions_layout
+        )
+
         self.transactions_container.addWidget(
             card
         )
 
     # =================================================
-    # Add transaction dialog
+    # Add transaction
     # =================================================
 
     def open_add_transaction_dialog(self) -> None:
@@ -532,15 +673,137 @@ class TransactionsView(QWidget):
             dialog
         )
 
-    def on_transaction_dialog_finished(
+    # =================================================
+    # Edit transaction
+    # =================================================
+
+    def open_edit_transaction(
         self,
+        transaction_id: int,
     ) -> None:
+
+        try:
+            dialog = EditTransactionDialog(
+                transaction_id=transaction_id,
+                parent=self.window(),
+            )
+
+        except ValueError:
+            return
+
+        dialog.finished.connect(
+            self.on_transaction_dialog_finished
+        )
+
+        self.window().show_modal(
+            dialog
+        )
+
+    # =================================================
+    # Delete confirmation
+    # =================================================
+
+    def confirm_delete_transaction(
+        self,
+        transaction_id: int,
+        category_name: str,
+        amount_text: str,
+    ) -> None:
+
+        modal = Modal(
+            title="Delete transaction?",
+            subtitle=(
+                f"{category_name} · {amount_text}\n\n"
+                "This transaction will be permanently deleted. "
+                "This action cannot be undone."
+            ),
+            primary_text="Delete transaction",
+            cancel_text="Cancel",
+        )
+
+        modal.primary_button.setObjectName(
+            "danger_button"
+        )
+
+        modal.primary_button.setStyleSheet(
+            """
+            QPushButton#danger_button {
+                background-color: #B91C1C;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 0 16px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+
+            QPushButton#danger_button:hover {
+                background-color: #991B1B;
+            }
+
+            QPushButton#danger_button:pressed {
+                background-color: #7F1D1D;
+            }
+            """
+        )
+
+        modal.primary_button.setFixedHeight(
+            42
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.delete_transaction(
+                transaction_id
+            )
+        )
+
+        modal.cancelled.connect(
+            self.close_nested_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    # =================================================
+    # Delete
+    # =================================================
+
+    def delete_transaction(
+        self,
+        transaction_id: int,
+    ) -> None:
+
+        try:
+            delete_transaction(
+                transaction_id
+            )
+
+        except Exception:
+            self.close_nested_modal()
+            return
+
+        # Close confirmation modal.
         self.window().close_modal()
 
         self.refresh_transactions()
 
     # =================================================
-    # Helpers
+    # Modal helpers
+    # =================================================
+
+    def on_transaction_dialog_finished(
+        self,
+    ) -> None:
+        self.window().close_modal()
+        self.refresh_transactions()
+
+    def close_nested_modal(self) -> None:
+        self.window().close_modal()
+
+    # =================================================
+    # Formatting
     # =================================================
 
     @staticmethod
@@ -559,7 +822,9 @@ class TransactionsView(QWidget):
         date_value: str,
     ) -> str:
         try:
-            year, month, day = date_value.split("-")
+            year, month, day = (
+                date_value.split("-")
+            )
 
             return (
                 f"{day}.{month}.{year}"
