@@ -1,7 +1,17 @@
-from PySide6.QtCore import QDate, QEvent, QLocale, QPoint, Qt
-from PySide6.QtGui import QColor, QPainter, QPalette
+from PySide6.QtCore import (
+    QDate,
+    QEvent,
+    QLocale,
+    QPoint,
+    Qt,
+)
+from PySide6.QtGui import (
+    QColor,
+    QPainter,
+    QPainterPath,
+    QPen,
+)
 from PySide6.QtWidgets import (
-    QAbstractItemView,
     QAbstractSpinBox,
     QCalendarWidget,
     QDateEdit,
@@ -17,12 +27,11 @@ from PySide6.QtWidgets import (
 
 class OctumoCalendarDelegate(QStyledItemDelegate):
     """
-    Custom delegate for Octumo calendar days.
+    Custom rendering for calendar days.
 
-    Draws:
-    - rounded dark selected date
-    - rounded light hover state
-    - normal calendar text
+    - Selected day: dark rounded rectangle
+    - Hovered day: light rounded rectangle
+    - Normal days: clean text
     """
 
     def paint(
@@ -32,6 +41,18 @@ class OctumoCalendarDelegate(QStyledItemDelegate):
         index,
     ) -> None:
         painter.save()
+
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing,
+            True,
+        )
+
+        rect = option.rect.adjusted(
+            4,
+            3,
+            -4,
+            -3,
+        )
 
         selected = bool(
             option.state
@@ -43,24 +64,11 @@ class OctumoCalendarDelegate(QStyledItemDelegate):
             & QStyle.StateFlag.State_MouseOver
         )
 
-        # Slightly smaller than the whole calendar cell.
-        rect = option.rect.adjusted(
-            3,
-            3,
-            -3,
-            -3,
-        )
-
         # -------------------------------------------------
-        # Selected date
+        # Background
         # -------------------------------------------------
 
         if selected:
-            painter.setRenderHint(
-                QPainter.RenderHint.Antialiasing,
-                True,
-            )
-
             painter.setPen(
                 Qt.PenStyle.NoPen
             )
@@ -75,16 +83,7 @@ class OctumoCalendarDelegate(QStyledItemDelegate):
                 8,
             )
 
-        # -------------------------------------------------
-        # Hovered date
-        # -------------------------------------------------
-
         elif hovered:
-            painter.setRenderHint(
-                QPainter.RenderHint.Antialiasing,
-                True,
-            )
-
             painter.setPen(
                 Qt.PenStyle.NoPen
             )
@@ -100,38 +99,36 @@ class OctumoCalendarDelegate(QStyledItemDelegate):
             )
 
         # -------------------------------------------------
-        # Let Qt draw the actual date text.
-        #
-        # We make the native selection background
-        # transparent so only our rounded rectangle
-        # remains visible.
+        # Date text
         # -------------------------------------------------
 
-        custom_option = option
-
-        palette = QPalette(
-            option.palette
+        text = index.data(
+            Qt.ItemDataRole.DisplayRole
         )
 
-        # Native Qt selection background -> transparent.
-        palette.setColor(
-            QPalette.ColorRole.Highlight,
-            QColor(0, 0, 0, 0),
-        )
+        if text is not None:
+            if selected:
+                text_color = QColor(
+                    "#FFFFFF"
+                )
+            else:
+                text_color = QColor(
+                    "#334155"
+                )
 
-        # Selected date text -> white.
-        palette.setColor(
-            QPalette.ColorRole.HighlightedText,
-            QColor("#FFFFFF"),
-        )
+            painter.setPen(
+                text_color
+            )
 
-        custom_option.palette = palette
+            painter.setFont(
+                option.font
+            )
 
-        super().paint(
-            painter,
-            custom_option,
-            index,
-        )
+            painter.drawText(
+                rect,
+                Qt.AlignmentFlag.AlignCenter,
+                str(text),
+            )
 
         painter.restore()
 
@@ -146,10 +143,13 @@ class OctumoCalendar(QCalendarWidget):
     - Previous/next month arrows only
     - Clean Octumo style
     - Rounded selected date
-    - Rounded hover date
+    - Rounded hover state
     """
 
-    def __init__(self, parent=None) -> None:
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
 
         self.setObjectName(
@@ -157,27 +157,20 @@ class OctumoCalendar(QCalendarWidget):
         )
 
         # -------------------------------------------------
-        # Native navigation is hidden.
-        # We use our own clean Octumo header.
+        # Calendar configuration
         # -------------------------------------------------
 
         self.setNavigationBarVisible(
             False
         )
 
-        # No grid lines.
         self.setGridVisible(
             False
         )
 
-        # Hide week numbers.
         self.setVerticalHeaderFormat(
             QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader
         )
-
-        # -------------------------------------------------
-        # English locale.
-        # -------------------------------------------------
 
         self.setLocale(
             QLocale(
@@ -186,13 +179,14 @@ class OctumoCalendar(QCalendarWidget):
             )
         )
 
-        # IMPORTANT:
-        # Must be set AFTER locale.
+        # Monday is the first day.
+        # This must be set AFTER the locale.
         self.setFirstDayOfWeek(
             Qt.DayOfWeek.Monday
         )
 
-        # Three-letter weekday names.
+        # Three-letter weekday names:
+        # Mon Tue Wed Thu Fri Sat Sun
         self.setHorizontalHeaderFormat(
             QCalendarWidget.HorizontalHeaderFormat.ShortDayNames
         )
@@ -219,8 +213,7 @@ class OctumoCalendar(QCalendarWidget):
 
     def _install_day_delegate(self) -> None:
         """
-        Install the custom delegate on the actual
-        calendar day table.
+        Apply custom rendering to the calendar day table.
         """
 
         calendar_view = self.findChild(
@@ -231,15 +224,16 @@ class OctumoCalendar(QCalendarWidget):
         if calendar_view is None:
             return
 
-        self._day_delegate = OctumoCalendarDelegate(
-            calendar_view
+        self._day_delegate = (
+            OctumoCalendarDelegate(
+                calendar_view
+            )
         )
 
         calendar_view.setItemDelegate(
             self._day_delegate
         )
 
-        # Make sure the calendar reports hover state.
         calendar_view.setMouseTracking(
             True
         )
@@ -250,7 +244,7 @@ class OctumoCalendar(QCalendarWidget):
 
     def _create_custom_header(self) -> None:
         """
-        Custom Octumo month navigation.
+        Creates the clean Octumo month navigation.
         """
 
         self.header = QFrame(
@@ -306,7 +300,7 @@ class OctumoCalendar(QCalendarWidget):
         )
 
         # -------------------------------------------------
-        # Month + year
+        # Month label
         # -------------------------------------------------
 
         self.month_label = QLabel(
@@ -351,7 +345,7 @@ class OctumoCalendar(QCalendarWidget):
         )
 
         # -------------------------------------------------
-        # Layout
+        # Header layout
         # -------------------------------------------------
 
         self.header_layout.addWidget(
@@ -428,20 +422,22 @@ class OctumoCalendar(QCalendarWidget):
         self.setStyleSheet(
             """
             QCalendarWidget#octumo_calendar {
-                background-color: #FFFFFF;
+                background-color: transparent;
+
                 color: #0F172A;
 
-                border: 1px solid #E2E8F0;
-                border-radius: 14px;
+                border: none;
             }
 
             QFrame#octumo_calendar_header {
-                background-color: #FFFFFF;
+                background-color: transparent;
+
                 border: none;
             }
 
             QLabel#calendar_month_label {
                 background-color: transparent;
+
                 border: none;
 
                 color: #17243A;
@@ -478,8 +474,9 @@ class OctumoCalendar(QCalendarWidget):
             /*
              * Weekday header.
              */
+
             QCalendarWidget QTableView {
-                background-color: #FFFFFF;
+                background-color: transparent;
 
                 border: none;
                 outline: none;
@@ -491,12 +488,11 @@ class OctumoCalendar(QCalendarWidget):
             }
 
             /*
-             * Calendar days.
+             * Calendar day area.
              */
-            QCalendarWidget QAbstractItemView {
-                background-color: #FFFFFF;
 
-                color: #334155;
+            QCalendarWidget QAbstractItemView {
+                background-color: transparent;
 
                 border: none;
                 outline: none;
@@ -510,37 +506,172 @@ class OctumoCalendar(QCalendarWidget):
             QCalendarWidget QTableView::item {
                 background-color: transparent;
 
-                color: #334155;
-
                 border: none;
 
                 padding: 5px;
                 margin: 1px;
             }
 
-            /*
-             * IMPORTANT:
-             * Selected and hover backgrounds are now
-             * drawn by OctumoCalendarDelegate.
-             *
-             * This prevents Qt from drawing its own
-             * square selection background.
-             */
             QCalendarWidget QTableView::item:selected {
                 background-color: transparent;
-                color: #FFFFFF;
 
                 border: none;
             }
 
             QCalendarWidget QTableView::item:selected:hover {
                 background-color: transparent;
-                color: #FFFFFF;
 
                 border: none;
             }
             """
         )
+
+
+class OctumoCalendarPopup(QFrame):
+    """
+    Custom Octumo calendar popup.
+
+    The background and border are painted manually with
+    antialiasing. This gives smooth rounded corners on macOS
+    without using QRegion masks.
+    """
+
+    CORNER_RADIUS = 16
+
+    def __init__(
+        self,
+        calendar: OctumoCalendar,
+        parent=None,
+    ) -> None:
+        super().__init__(
+            parent,
+            Qt.WindowType.Popup,
+        )
+
+        self.setObjectName(
+            "octumo_calendar_popup"
+        )
+
+        # Transparent window background.
+        #
+        # IMPORTANT:
+        # We paint the opaque white rounded surface
+        # ourselves in paintEvent().
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground,
+            True,
+        )
+
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_NoSystemBackground,
+            True,
+        )
+
+        self._calendar = calendar
+
+        self._layout = QHBoxLayout(
+            self
+        )
+
+        self._layout.setContentsMargins(
+            1,
+            1,
+            1,
+            1,
+        )
+
+        self._layout.setSpacing(
+            0,
+        )
+
+        self._layout.addWidget(
+            self._calendar
+        )
+
+    def paintEvent(
+        self,
+        event,
+    ) -> None:
+        painter = QPainter(
+            self
+        )
+
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing,
+            True,
+        )
+
+        painter.setRenderHint(
+            QPainter.RenderHint.TextAntialiasing,
+            True,
+        )
+
+        rect = self.rect().adjusted(
+            0,
+            0,
+            -1,
+            -1,
+        )
+
+        path = QPainterPath()
+
+        path.addRoundedRect(
+            rect,
+            self.CORNER_RADIUS,
+            self.CORNER_RADIUS,
+        )
+
+        # -------------------------------------------------
+        # White background
+        # -------------------------------------------------
+
+        painter.setPen(
+            Qt.PenStyle.NoPen
+        )
+
+        painter.setBrush(
+            QColor("#FFFFFF")
+        )
+
+        painter.drawPath(
+            path
+        )
+
+        # -------------------------------------------------
+        # Subtle border
+        # -------------------------------------------------
+
+        border_path = QPainterPath()
+
+        border_rect = rect.adjusted(
+            0.5,
+            0.5,
+            -0.5,
+            -0.5,
+        )
+
+        border_path.addRoundedRect(
+            border_rect,
+            self.CORNER_RADIUS,
+            self.CORNER_RADIUS,
+        )
+
+        painter.setBrush(
+            Qt.BrushStyle.NoBrush
+        )
+
+        painter.setPen(
+            QPen(
+                QColor("#CBD5E1"),
+                1.0,
+            )
+        )
+
+        painter.drawPath(
+            border_path
+        )
+
+        painter.end()
 
 
 class OctumoDateEdit(QDateEdit):
@@ -553,9 +684,13 @@ class OctumoDateEdit(QDateEdit):
     - Clicking the chevron opens the calendar
     - Date can be selected with mouse
     - Date can still be typed with keyboard
+    - Smooth rounded calendar popup
     """
 
-    def __init__(self, parent=None) -> None:
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
 
         self.setObjectName(
@@ -566,12 +701,14 @@ class OctumoDateEdit(QDateEdit):
             42
         )
 
-        # Remove native QDateEdit spin buttons.
+        # -------------------------------------------------
+        # Remove native QDateEdit controls.
+        # -------------------------------------------------
+
         self.setButtonSymbols(
             QAbstractSpinBox.ButtonSymbols.NoButtons
         )
 
-        # Use our own popup.
         self.setCalendarPopup(
             False
         )
@@ -584,7 +721,10 @@ class OctumoDateEdit(QDateEdit):
             QDate.currentDate()
         )
 
-        # Manual keyboard editing.
+        # -------------------------------------------------
+        # Keyboard editing.
+        # -------------------------------------------------
+
         self.setKeyboardTracking(
             False
         )
@@ -599,52 +739,17 @@ class OctumoDateEdit(QDateEdit):
         )
 
         # -------------------------------------------------
-        # Custom calendar
+        # Custom calendar.
         # -------------------------------------------------
 
         self._calendar = OctumoCalendar()
 
         # -------------------------------------------------
-        # Popup
+        # Custom popup.
         # -------------------------------------------------
 
-        self._popup = QFrame(
-            None,
-            Qt.WindowType.Popup,
-        )
-
-        self._popup.setObjectName(
-            "octumo_calendar_popup"
-        )
-
-        self._popup_layout = QHBoxLayout(
-            self._popup
-        )
-
-        self._popup_layout.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
-        )
-
-        self._popup_layout.setSpacing(
-            0
-        )
-
-        self._popup_layout.addWidget(
+        self._popup = OctumoCalendarPopup(
             self._calendar
-        )
-
-        self._popup.setStyleSheet(
-            """
-            QFrame#octumo_calendar_popup {
-                background-color: #FFFFFF;
-
-                border: none;
-                border-radius: 14px;
-            }
-            """
         )
 
         self._calendar.clicked.connect(
@@ -652,7 +757,7 @@ class OctumoDateEdit(QDateEdit):
         )
 
         # -------------------------------------------------
-        # Calendar button
+        # Calendar button.
         # -------------------------------------------------
 
         self._create_calendar_button()
@@ -792,17 +897,21 @@ class OctumoDateEdit(QDateEdit):
     def _show_calendar(self) -> None:
         current_date = self.date()
 
+        # Select current date.
         self._calendar.setSelectedDate(
             current_date
         )
 
+        # Open on current month.
         self._calendar.setCurrentPage(
             current_date.year(),
             current_date.month(),
         )
 
+        # Calculate popup size.
         self._popup.adjustSize()
 
+        # Position below the date field.
         global_position = self.mapToGlobal(
             QPoint(
                 0,
@@ -860,6 +969,7 @@ class OctumoDateEdit(QDateEdit):
             /*
              * Completely remove native Qt controls.
              */
+
             QDateEdit#octumo_date_edit::drop-down {
                 width: 0px;
 
