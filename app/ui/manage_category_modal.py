@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.ui.modal import Modal
+
 from app.services.category_service import (
     archive_category,
     delete_category,
@@ -57,7 +59,12 @@ class ManageCategoryModal(Modal):
         name_container = QWidget()
 
         name_layout = QVBoxLayout(name_container)
-        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
         name_layout.setSpacing(8)
 
         name_layout.addWidget(name_label)
@@ -86,7 +93,12 @@ class ManageCategoryModal(Modal):
         # -------------------------------------------------
 
         type_row = QHBoxLayout()
-        type_row.setContentsMargins(0, 0, 0, 0)
+        type_row.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
 
         type_label = QLabel("Type")
         type_label.setObjectName("info_label")
@@ -113,7 +125,12 @@ class ManageCategoryModal(Modal):
         )
 
         usage_row = QHBoxLayout()
-        usage_row.setContentsMargins(0, 0, 0, 0)
+        usage_row.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
 
         usage_label = QLabel("Usage")
         usage_label.setObjectName("info_label")
@@ -189,6 +206,7 @@ class ManageCategoryModal(Modal):
         usage_count: int,
     ) -> QWidget:
         section = QFrame()
+
         section.setObjectName(
             "category_status_card"
         )
@@ -209,6 +227,7 @@ class ManageCategoryModal(Modal):
         # -------------------------------------------------
 
         header_layout = QHBoxLayout()
+
         header_layout.setContentsMargins(
             0,
             0,
@@ -217,28 +236,37 @@ class ManageCategoryModal(Modal):
         )
 
         title_container = QVBoxLayout()
+
         title_container.setContentsMargins(
             0,
             0,
             0,
             0,
         )
+
         title_container.setSpacing(4)
 
         title = QLabel()
+
         title.setObjectName(
             "category_status_title"
         )
 
         description = QLabel()
+
         description.setObjectName(
             "category_status_description"
         )
 
         description.setWordWrap(True)
 
-        title_container.addWidget(title)
-        title_container.addWidget(description)
+        title_container.addWidget(
+            title
+        )
+
+        title_container.addWidget(
+            description
+        )
 
         header_layout.addLayout(
             title_container,
@@ -254,12 +282,14 @@ class ManageCategoryModal(Modal):
         # -------------------------------------------------
 
         actions_layout = QHBoxLayout()
+
         actions_layout.setContentsMargins(
             0,
             0,
             0,
             0,
         )
+
         actions_layout.setSpacing(8)
 
         if self.category["is_active"]:
@@ -272,10 +302,22 @@ class ManageCategoryModal(Modal):
                 "Category is active"
             )
 
-            description.setText(
-                "This category is currently available "
-                "for new transactions."
-            )
+            if usage_count == 0:
+                description.setText(
+                    "This category is available for "
+                    "new transactions and can be deleted "
+                    "because it has no transactions."
+                )
+            else:
+                description.setText(
+                    "This category is available for "
+                    "new transactions but cannot be deleted "
+                    "because it has existing transactions."
+                )
+
+            # ---------------------------------------------
+            # Archive
+            # ---------------------------------------------
 
             archive_button = QPushButton(
                 "Archive"
@@ -303,9 +345,13 @@ class ManageCategoryModal(Modal):
 
             # ---------------------------------------------
             # Permanent delete
+            #
+            # Only available when the category
+            # has no transactions.
             # ---------------------------------------------
 
             if usage_count == 0:
+
                 delete_button = QPushButton(
                     "Delete permanently"
                 )
@@ -431,6 +477,10 @@ class ManageCategoryModal(Modal):
                 background-color: #FEF2F2;
                 border-color: #F87171;
             }
+
+            QPushButton#category_delete_button:pressed {
+                background-color: #FEE2E2;
+            }
             """
         )
 
@@ -469,6 +519,14 @@ class ManageCategoryModal(Modal):
         self.cancelled.emit()
 
     def handle_delete(self) -> None:
+        # Safety check before permanent deletion.
+        usage_count = get_category_usage_count(
+            self.category_id
+        )
+
+        if usage_count > 0:
+            return
+
         delete_category(
             self.category_id
         )
