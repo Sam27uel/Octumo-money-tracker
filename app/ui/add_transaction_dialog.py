@@ -17,8 +17,12 @@ from PySide6.QtWidgets import (
     QListView,
     QLineEdit,
     QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
+    QListWidget,
+    QListWidgetItem,
+    
 )
 
 from app.services.account_service import list_accounts
@@ -31,183 +35,441 @@ from app.ui.date_picker import OctumoDateEdit
 # Modern Combo Box
 # =========================================================
 
-class ModernComboBox(QComboBox):
-    """
-    Modern Octumo-style combo box.
-    """
+class RoundedComboPopup(QWidget):
+    def __init__(self, combo_box):
+        super().__init__(None)
 
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
+        self.combo_box = combo_box
 
-        self.setObjectName("modern_combo_box")
-        self.setFixedHeight(42)
+        # ---------------------------------------------------------
+        # POPUP WINDOW
+        # ---------------------------------------------------------
 
-        view = QListView()
-
-        view.setObjectName("modern_combo_popup")
-
-        view.setFrameShape(
-            QFrame.Shape.NoFrame
-        )
-
-        view.setFrameShadow(
-            QFrame.Shadow.Plain
-        )
-
-        view.setSpacing(2)
-        view.setUniformItemSizes(True)
-
-        view.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-
-        view.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-
-        view.setSelectionMode(
-            QListView.SelectionMode.SingleSelection
-        )
-
-        view.setFocusPolicy(
-            Qt.FocusPolicy.NoFocus
-        )
-
-        view.setWindowFlags(
+        self.setWindowFlags(
             Qt.WindowType.Popup
             | Qt.WindowType.FramelessWindowHint
         )
 
-        view.setAttribute(
-            Qt.WidgetAttribute.WA_TranslucentBackground,
-            False,
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground
         )
 
-        view.setAutoFillBackground(True)
-
-        palette = view.palette()
-
-        palette.setColor(
-            view.palette().ColorRole.Window,
-            Qt.GlobalColor.white,
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_NoSystemBackground
         )
 
-        palette.setColor(
-            view.palette().ColorRole.Base,
-            Qt.GlobalColor.white,
+        self.setObjectName(
+            "rounded_combo_popup_window"
         )
 
-        palette.setColor(
-            view.palette().ColorRole.Text,
-            Qt.GlobalColor.black,
+        # ---------------------------------------------------------
+        # OUTER LAYOUT
+        # ---------------------------------------------------------
+
+        outer_layout = QVBoxLayout(self)
+
+        outer_layout.setContentsMargins(
+            1,
+            1,
+            1,
+            1,
         )
 
-        view.setPalette(palette)
+        outer_layout.setSpacing(0)
 
-        self.setView(view)
+        # ---------------------------------------------------------
+        # ACTUAL ROUNDED SURFACE
+        # ---------------------------------------------------------
+
+        self.surface = QFrame()
+
+        self.surface.setObjectName(
+            "rounded_combo_surface"
+        )
+
+        self.surface.setFrameShape(
+            QFrame.Shape.NoFrame
+        )
+
+        self.surface.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground
+        )
+
+        self.surface.setStyleSheet(
+            """
+            QFrame#rounded_combo_surface {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-radius: 16px;
+            }
+            """
+        )
+
+        outer_layout.addWidget(
+            self.surface
+        )
+
+        # ---------------------------------------------------------
+        # SURFACE LAYOUT
+        # ---------------------------------------------------------
+
+        layout = QVBoxLayout(
+            self.surface
+        )
+
+        layout.setContentsMargins(
+            7,
+            7,
+            7,
+            7,
+        )
+
+        layout.setSpacing(3)
+
+        # ---------------------------------------------------------
+        # OPTIONS
+        # ---------------------------------------------------------
+
+        self.list_widget = QListWidget()
+
+        self.list_widget.setObjectName(
+            "rounded_combo_options"
+        )
+
+        self.list_widget.setFrameShape(
+            QFrame.Shape.NoFrame
+        )
+
+        self.list_widget.setFrameShadow(
+            QFrame.Shadow.Plain
+        )
+
+        self.list_widget.setLineWidth(0)
+
+        self.list_widget.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.list_widget.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        self.list_widget.setSpacing(3)
+
+        self.list_widget.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )
+
+        self.list_widget.setStyleSheet(
+            """
+            QListWidget#rounded_combo_options {
+                background: transparent;
+                border: none;
+                outline: none;
+                padding: 0px;
+            }
+
+            QListWidget#rounded_combo_options::item {
+                background: transparent;
+
+                color: #17233B;
+
+                min-height: 38px;
+
+                padding-left: 12px;
+                padding-right: 12px;
+
+                border-radius: 10px;
+
+                font-size: 15px;
+                font-weight: 600;
+            }
+
+            QListWidget#rounded_combo_options::item:hover {
+                background: #F1F5F9;
+                color: #17233B;
+            }
+
+            QListWidget#rounded_combo_options::item:selected {
+                background: #E8EDF5;
+                color: #17233B;
+            }
+
+            QListWidget#rounded_combo_options QScrollBar:vertical {
+                width: 6px;
+
+                background: transparent;
+                border: none;
+
+                margin: 6px 2px 6px 0px;
+            }
+
+            QListWidget#rounded_combo_options QScrollBar::handle:vertical {
+                background: #CBD5E1;
+
+                min-height: 30px;
+
+                border-radius: 3px;
+            }
+
+            QListWidget#rounded_combo_options QScrollBar::add-line:vertical,
+            QListWidget#rounded_combo_options QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+
+            QListWidget#rounded_combo_options QScrollBar::add-page:vertical,
+            QListWidget#rounded_combo_options QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+            """
+        )
+
+        layout.addWidget(
+            self.list_widget
+        )
+
+        # ---------------------------------------------------------
+        # CLICK
+        # ---------------------------------------------------------
+
+        self.list_widget.itemClicked.connect(
+            self._item_clicked
+        )
+
+    # -------------------------------------------------------------
+    # ITEM CLICKED
+    # -------------------------------------------------------------
+
+    def _item_clicked(self, item):
+        index = item.data(
+            Qt.ItemDataRole.UserRole
+        )
+
+        if index is None:
+            return
+
+        self.combo_box.setCurrentIndex(
+            index
+        )
+
+        self.hide()
+
+    # -------------------------------------------------------------
+    # REFRESH
+    # -------------------------------------------------------------
+
+    def refresh_items(self):
+        self.list_widget.clear()
+
+        for index in range(
+            self.combo_box.count()
+        ):
+            item = QListWidgetItem(
+                self.combo_box.itemText(index)
+            )
+
+            item.setData(
+                Qt.ItemDataRole.UserRole,
+                index
+            )
+
+            self.list_widget.addItem(
+                item
+            )
+
+        # ---------------------------------------------------------
+        # CURRENT ITEM
+        # ---------------------------------------------------------
+
+        current_index = (
+            self.combo_box.currentIndex()
+        )
+
+        if current_index >= 0:
+            self.list_widget.setCurrentRow(
+                current_index
+            )
+
+        # ---------------------------------------------------------
+        # HEIGHT
+        # ---------------------------------------------------------
+
+        item_count = (
+            self.combo_box.count()
+        )
+
+        visible_items = min(
+            item_count,
+            7
+        )
+
+        item_height = 41
+
+        popup_height = (
+            visible_items * item_height
+            + 16
+        )
+
+        self.setFixedHeight(
+            max(
+                54,
+                popup_height
+            )
+        )
+        
+class ModernComboBox(QComboBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setObjectName(
+            "modern_combo_box"
+        )
+
+        self.setFixedHeight(42)
 
         self.setStyleSheet(
             """
             QComboBox#modern_combo_box {
-                background-color: #FFFFFF;
-                color: #0F172A;
+                background: #FFFFFF;
 
                 border: 1px solid #CBD5E1;
-                border-radius: 9px;
+                border-radius: 12px;
 
-                padding-left: 12px;
-                padding-right: 34px;
+                color: #17233B;
 
-                font-size: 14px;
+                font-size: 15px;
+                font-weight: 600;
+
+                padding-left: 14px;
+                padding-right: 42px;
             }
 
             QComboBox#modern_combo_box:hover {
-                border-color: #94A3B8;
+                border: 1px solid #94A3B8;
             }
 
             QComboBox#modern_combo_box:focus {
-                border-color: #64748B;
-                background-color: #FFFFFF;
+                border: 1px solid #17233B;
             }
 
             QComboBox#modern_combo_box::drop-down {
-                width: 32px;
+                width: 0px;
                 border: none;
                 background: transparent;
             }
 
-            QListView#modern_combo_popup {
-                background-color: #FFFFFF;
-                color: #0F172A;
-
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
-
-                padding: 6px;
-                outline: none;
-            }
-
-            QListView#modern_combo_popup::item {
-                background-color: transparent;
-                color: #0F172A;
-
-                min-height: 36px;
-
-                padding-left: 10px;
-                padding-right: 10px;
-
-                border-radius: 8px;
-            }
-
-            QListView#modern_combo_popup::item:hover {
-                background-color: #F8FAFC;
-                color: #0F172A;
-            }
-
-            QListView#modern_combo_popup::item:selected {
-                background-color: #F1F5F9;
-                color: #0F172A;
-            }
-
-            QListView#modern_combo_popup::item:selected:hover {
-                background-color: #E2E8F0;
-                color: #0F172A;
-            }
-
-            QListView#modern_combo_popup QScrollBar:vertical {
-                background: transparent;
-                width: 6px;
-
-                margin-top: 7px;
-                margin-bottom: 7px;
-                margin-right: 3px;
-
-                border: none;
-            }
-
-            QListView#modern_combo_popup QScrollBar::handle:vertical {
-                background: #CBD5E1;
-                border-radius: 3px;
-                min-height: 28px;
-            }
-
-            QListView#modern_combo_popup QScrollBar::handle:vertical:hover {
-                background: #94A3B8;
-            }
-
-            QListView#modern_combo_popup QScrollBar::add-line:vertical,
-            QListView#modern_combo_popup QScrollBar::sub-line:vertical {
+            QComboBox#modern_combo_box::down-arrow {
+                image: none;
+                width: 0px;
                 height: 0px;
-                border: none;
-                background: transparent;
-            }
-
-            QListView#modern_combo_popup QScrollBar::add-page:vertical,
-            QListView#modern_combo_popup QScrollBar::sub-page:vertical {
-                background: transparent;
             }
             """
         )
+
+        self.arrow_button = QToolButton(self)
+
+        self.arrow_button.setObjectName(
+            "octumo_combo_arrow"
+        )
+
+        self.arrow_button.setText("▼")
+
+        self.arrow_button.setFixedSize(
+            34,
+            34,
+        )
+
+        self.arrow_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.arrow_button.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )
+
+        self.arrow_button.setStyleSheet(
+            """
+            QToolButton#octumo_combo_arrow {
+                background: transparent;
+                border: none;
+
+                color: #17233B;
+
+                font-size: 13px;
+                font-weight: 700;
+
+                padding: 0px;
+                margin: 0px;
+            }
+
+            QToolButton#octumo_combo_arrow:hover {
+                color: #0F172A;
+            }
+            """
+        )
+
+        self.arrow_button.clicked.connect(
+            self.showPopup
+        )
+
+        self._custom_popup = RoundedComboPopup(
+            self
+        )
+
+        self._position_arrow_button()
+
+    def showPopup(self):
+        self._custom_popup.refresh_items()
+
+        self._custom_popup.setFixedWidth(
+            self.width()
+        )
+
+        position = self.mapToGlobal(
+            self.rect().bottomLeft()
+        )
+
+        self._custom_popup.move(
+            position.x(),
+            position.y() + 6,
+        )
+
+        self._custom_popup.show()
+        self._custom_popup.raise_()
+
+    def hidePopup(self):
+        if hasattr(
+            self,
+            "_custom_popup",
+        ):
+            self._custom_popup.hide()
+
+    def _position_arrow_button(self):
+        if not hasattr(
+            self,
+            "arrow_button",
+        ):
+            return
+
+        x = (
+            self.width()
+            - self.arrow_button.width()
+            - 6
+        )
+
+        y = (
+            self.height()
+            - self.arrow_button.height()
+        ) // 2
+
+        self.arrow_button.move(
+            x,
+            y
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._position_arrow_button()
 
 
 # =========================================================
