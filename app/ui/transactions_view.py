@@ -33,6 +33,7 @@ from app.ui.modal import Modal
 
 
 class TransactionsView(QWidget):
+
     def __init__(
         self,
         parent=None,
@@ -56,7 +57,7 @@ class TransactionsView(QWidget):
             44,
             36,
             44,
-            44,
+            36,
         )
 
         layout.setSpacing(0)
@@ -85,7 +86,7 @@ class TransactionsView(QWidget):
             0,
         )
 
-        title_container.setSpacing(6)
+        title_container.setSpacing(5)
 
         title = QLabel("Transactions")
         title.setObjectName("page_title")
@@ -98,7 +99,10 @@ class TransactionsView(QWidget):
         title_container.addWidget(title)
         title_container.addWidget(subtitle)
 
-        header_layout.addLayout(title_container)
+        header_layout.addLayout(
+            title_container
+        )
+
         header_layout.addStretch()
 
         self.add_transaction_button = QPushButton(
@@ -130,7 +134,7 @@ class TransactionsView(QWidget):
         # Filters
         # -----------------------------------------------------
 
-        layout.addSpacing(26)
+        layout.addSpacing(24)
 
         filters_card = QFrame()
         filters_card.setObjectName("filters_card")
@@ -140,15 +144,17 @@ class TransactionsView(QWidget):
         )
 
         filters_layout.setContentsMargins(
-            18,
+            16,
             14,
-            18,
+            16,
             14,
         )
 
         filters_layout.setSpacing(10)
 
+        # -----------------------------------------------------
         # Search
+        # -----------------------------------------------------
 
         self.search_input = QLineEdit()
 
@@ -170,7 +176,9 @@ class TransactionsView(QWidget):
             self.search_input
         )
 
+        # -----------------------------------------------------
         # Filter row
+        # -----------------------------------------------------
 
         filters_row = QHBoxLayout()
 
@@ -189,10 +197,9 @@ class TransactionsView(QWidget):
 
         self.account_filter = ModernComboBox()
 
-        # IMPORTANT:
-        # Do not change the objectName of ModernComboBox.
-        # Its own stylesheet is responsible for hiding
-        # the native arrow and displaying the Octumo arrow.
+        self.account_filter.setObjectName(
+            "transaction_filter_combo"
+        )
 
         self.account_filter.setFixedHeight(40)
 
@@ -211,6 +218,10 @@ class TransactionsView(QWidget):
 
         self.category_filter = ModernComboBox()
 
+        self.category_filter.setObjectName(
+            "transaction_filter_combo"
+        )
+
         self.category_filter.setFixedHeight(40)
 
         self.category_filter.currentIndexChanged.connect(
@@ -227,6 +238,10 @@ class TransactionsView(QWidget):
         # -----------------------------------------------------
 
         self.type_filter = ModernComboBox()
+
+        self.type_filter.setObjectName(
+            "transaction_filter_combo"
+        )
 
         self.type_filter.setFixedHeight(40)
 
@@ -259,6 +274,10 @@ class TransactionsView(QWidget):
         # -----------------------------------------------------
 
         self.date_filter = ModernComboBox()
+
+        self.date_filter.setObjectName(
+            "transaction_filter_combo"
+        )
 
         self.date_filter.setFixedHeight(40)
 
@@ -309,7 +328,7 @@ class TransactionsView(QWidget):
         )
 
         self.clear_filters_button.setFixedHeight(40)
-        self.clear_filters_button.setFixedWidth(88)
+        self.clear_filters_button.setFixedWidth(82)
 
         self.clear_filters_button.setCursor(
             Qt.CursorShape.PointingHandCursor
@@ -327,7 +346,9 @@ class TransactionsView(QWidget):
             filters_row
         )
 
-        layout.addWidget(filters_card)
+        layout.addWidget(
+            filters_card
+        )
 
         # -----------------------------------------------------
         # Summary
@@ -341,17 +362,15 @@ class TransactionsView(QWidget):
             "summary_card"
         )
 
-        self.summary_card.setFixedHeight(70)
-
         summary_layout = QHBoxLayout(
             self.summary_card
         )
 
         summary_layout.setContentsMargins(
-            22,
-            10,
-            22,
-            10,
+            20,
+            11,
+            20,
+            11,
         )
 
         summary_layout.setSpacing(0)
@@ -372,6 +391,7 @@ class TransactionsView(QWidget):
         income_container.setSpacing(2)
 
         income_title = QLabel("Income")
+
         income_title.setObjectName(
             "summary_label"
         )
@@ -426,15 +446,16 @@ class TransactionsView(QWidget):
         expenses_container = QVBoxLayout()
 
         expenses_container.setContentsMargins(
-            22,
+            20,
             0,
-            22,
+            20,
             0,
         )
 
         expenses_container.setSpacing(2)
 
         expenses_title = QLabel("Expenses")
+
         expenses_title.setObjectName(
             "summary_label"
         )
@@ -489,7 +510,7 @@ class TransactionsView(QWidget):
         net_container = QVBoxLayout()
 
         net_container.setContentsMargins(
-            22,
+            20,
             0,
             0,
             0,
@@ -498,6 +519,7 @@ class TransactionsView(QWidget):
         net_container.setSpacing(2)
 
         net_title = QLabel("Net")
+
         net_title.setObjectName(
             "summary_label"
         )
@@ -549,7 +571,7 @@ class TransactionsView(QWidget):
         # Transaction scroll
         # -----------------------------------------------------
 
-        layout.addSpacing(8)
+        layout.addSpacing(6)
 
         self.transactions_scroll = QScrollArea()
 
@@ -648,10 +670,42 @@ class TransactionsView(QWidget):
             }
 
             /*
-             * ModernComboBox already owns the visual style
-             * and custom arrow. We deliberately do NOT
-             * override its objectName here.
+             * Disable the native Qt/macOS combo arrow.
+             * Only the Octumo custom arrow remains visible.
              */
+
+            QComboBox#modern_combo_box::drop-down,
+            QComboBox#transaction_filter_combo::drop-down {
+                width: 0px;
+                border: none;
+                background: transparent;
+            }
+
+            QComboBox#modern_combo_box::down-arrow,
+            QComboBox#transaction_filter_combo::down-arrow {
+                image: none;
+                width: 0px;
+                height: 0px;
+            }
+
+            QComboBox#transaction_filter_combo {
+                background-color: #FFFFFF;
+                color: #17233B;
+                border: 1px solid #CBD5E1;
+                border-radius: 11px;
+                font-size: 14px;
+                font-weight: 600;
+                padding-left: 12px;
+                padding-right: 38px;
+            }
+
+            QComboBox#transaction_filter_combo:hover {
+                border-color: #94A3B8;
+            }
+
+            QComboBox#transaction_filter_combo:focus {
+                border-color: #64748B;
+            }
 
             QPushButton#clear_filters_button {
                 background-color: #FFFFFF;
@@ -686,25 +740,25 @@ class TransactionsView(QWidget):
 
             QLabel#summary_income {
                 color: #15803D;
-                font-size: 18px;
+                font-size: 17px;
                 font-weight: 700;
             }
 
             QLabel#summary_expense {
                 color: #B91C1C;
-                font-size: 18px;
+                font-size: 17px;
                 font-weight: 700;
             }
 
             QLabel#summary_net_positive {
                 color: #15803D;
-                font-size: 18px;
+                font-size: 17px;
                 font-weight: 700;
             }
 
             QLabel#summary_net_negative {
                 color: #B91C1C;
-                font-size: 18px;
+                font-size: 17px;
                 font-weight: 700;
             }
 
@@ -715,7 +769,7 @@ class TransactionsView(QWidget):
 
             QLabel#result_count {
                 color: #64748B;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 600;
             }
 
@@ -728,29 +782,14 @@ class TransactionsView(QWidget):
                 background-color: transparent;
             }
 
-            QWidget#transaction_group {
-                background-color: transparent;
-            }
-
-            QLabel#transaction_group_date {
-                color: #334155;
-                font-size: 14px;
-                font-weight: 700;
-            }
-
-            QLabel#transaction_group_total {
-                color: #94A3B8;
-                font-size: 13px;
-                font-weight: 600;
-            }
-
             QWidget#transaction_card {
                 background-color: #FFFFFF;
                 border: 1px solid #E2E8F0;
-                border-radius: 14px;
+                border-radius: 13px;
             }
 
             QWidget#transaction_card:hover {
+                background-color: #FCFDFE;
                 border-color: #CBD5E1;
             }
 
@@ -760,13 +799,7 @@ class TransactionsView(QWidget):
                 font-weight: 700;
             }
 
-            QLabel#transaction_note {
-                color: #64748B;
-                font-size: 13px;
-                font-weight: 500;
-            }
-
-            QLabel#transaction_account {
+            QLabel#transaction_secondary {
                 color: #64748B;
                 font-size: 12px;
                 font-weight: 500;
@@ -797,6 +830,7 @@ class TransactionsView(QWidget):
                 border-radius: 8px;
                 font-size: 13px;
                 font-weight: 600;
+                padding: 0 10px;
             }
 
             QPushButton#transaction_edit_button:hover {
@@ -812,6 +846,7 @@ class TransactionsView(QWidget):
                 border-radius: 8px;
                 font-size: 13px;
                 font-weight: 600;
+                padding: 0 10px;
             }
 
             QPushButton#transaction_delete_button:hover {
@@ -875,7 +910,7 @@ class TransactionsView(QWidget):
             8,
         )
 
-        self.transactions_container.setSpacing(18)
+        self.transactions_container.setSpacing(10)
 
         self.transactions_container.setAlignment(
             Qt.AlignmentFlag.AlignTop
@@ -968,7 +1003,9 @@ class TransactionsView(QWidget):
                 Qt.AlignmentFlag.AlignCenter
             )
 
-            empty_label.setMinimumHeight(100)
+            empty_label.setMinimumHeight(
+                100
+            )
 
             self.transactions_container.addWidget(
                 empty_label
@@ -976,9 +1013,15 @@ class TransactionsView(QWidget):
 
             return
 
-        self.build_grouped_transactions(
-            transactions
-        )
+        # No date grouping here.
+        # Every transaction is a compact independent card.
+
+        for transaction in transactions:
+            self.transactions_container.addWidget(
+                self.create_transaction_card(
+                    transaction
+                )
+            )
 
     def clear_transactions(self) -> None:
         while self.transactions_container.count():
@@ -988,6 +1031,7 @@ class TransactionsView(QWidget):
 
             if widget is not None:
                 widget.deleteLater()
+
             else:
                 child_layout = item.layout()
 
@@ -996,7 +1040,10 @@ class TransactionsView(QWidget):
                         child_layout
                     )
 
-    def clear_layout(self, layout) -> None:
+    def clear_layout(
+        self,
+        layout,
+    ) -> None:
         while layout.count():
             item = layout.takeAt(0)
 
@@ -1058,7 +1105,9 @@ class TransactionsView(QWidget):
         # Type
         # -----------------------------------------------------
 
-        kind = self.type_filter.currentData()
+        kind = (
+            self.type_filter.currentData()
+        )
 
         if kind == "income":
             result = [
@@ -1082,8 +1131,10 @@ class TransactionsView(QWidget):
             self.date_filter.currentData()
         )
 
-        start_date, end_date = self.get_date_range(
-            date_filter
+        start_date, end_date = (
+            self.get_date_range(
+                date_filter
+            )
         )
 
         if start_date is not None:
@@ -1092,7 +1143,9 @@ class TransactionsView(QWidget):
             for transaction in result:
                 transaction_date = (
                     self.parse_transaction_date(
-                        transaction["transaction_date"]
+                        transaction[
+                            "transaction_date"
+                        ]
                     )
                 )
 
@@ -1135,10 +1188,6 @@ class TransactionsView(QWidget):
 
             result = filtered
 
-        # -----------------------------------------------------
-        # Final sorting
-        # -----------------------------------------------------
-
         result.sort(
             key=lambda transaction: (
                 transaction["transaction_date"],
@@ -1154,6 +1203,7 @@ class TransactionsView(QWidget):
         transaction,
         search_text: str,
     ) -> bool:
+
         category_name = (
             transaction["category_name"]
             or ""
@@ -1174,8 +1224,10 @@ class TransactionsView(QWidget):
             or ""
         )
 
-        formatted_date = self.format_date(
-            transaction_date
+        formatted_date = (
+            self.format_date(
+                transaction_date
+            )
         )
 
         amount = (
@@ -1185,8 +1237,10 @@ class TransactionsView(QWidget):
             / 100
         )
 
-        amount_text = self.format_amount(
-            amount
+        amount_text = (
+            self.format_amount(
+                amount
+            )
         )
 
         kind_text = (
@@ -1235,8 +1289,10 @@ class TransactionsView(QWidget):
             return start_date, end_date
 
         if filter_name == "last_month":
-            first_this_month = today.replace(
-                day=1
+            first_this_month = (
+                today.replace(
+                    day=1
+                )
             )
 
             last_day_previous_month = (
@@ -1245,33 +1301,32 @@ class TransactionsView(QWidget):
             )
 
             start_date = (
-                last_day_previous_month.replace(
-                    day=1
-                )
+                last_day_previous_month
+                .replace(day=1)
             )
 
-            end_date = last_day_previous_month
+            end_date = (
+                last_day_previous_month
+            )
 
             return start_date, end_date
 
         if filter_name == "last_3_months":
-            first_this_month = today.replace(
-                day=1
+            first_this_month = (
+                today.replace(
+                    day=1
+                )
             )
 
             start_date = (
                 first_this_month
                 - timedelta(days=1)
-            ).replace(
-                day=1
-            )
+            ).replace(day=1)
 
             start_date = (
                 start_date
                 - timedelta(days=1)
-            ).replace(
-                day=1
-            )
+            ).replace(day=1)
 
             end_date = today
 
@@ -1324,11 +1379,14 @@ class TransactionsView(QWidget):
 
         for transaction in transactions:
             amount_cents = (
-                transaction["amount_cents"]
+                transaction[
+                    "amount_cents"
+                ]
             )
 
             if amount_cents > 0:
                 income_cents += amount_cents
+
             else:
                 expense_cents += abs(
                     amount_cents
@@ -1389,153 +1447,15 @@ class TransactionsView(QWidget):
     ) -> None:
         if count == 1:
             text = "1 transaction"
+
         else:
-            text = f"{count} transactions"
+            text = (
+                f"{count} transactions"
+            )
 
         self.result_count_label.setText(
             text
         )
-
-    # =========================================================
-    # Grouped transaction list
-    # =========================================================
-
-    def build_grouped_transactions(
-        self,
-        transactions,
-    ) -> None:
-        grouped = {}
-
-        for transaction in transactions:
-            transaction_date = (
-                transaction["transaction_date"]
-            )
-
-            if transaction_date not in grouped:
-                grouped[transaction_date] = []
-
-            grouped[
-                transaction_date
-            ].append(transaction)
-
-        for (
-            transaction_date,
-            date_transactions,
-        ) in grouped.items():
-
-            group = QWidget()
-
-            group.setObjectName(
-                "transaction_group"
-            )
-
-            group_layout = QVBoxLayout(
-                group
-            )
-
-            group_layout.setContentsMargins(
-                0,
-                0,
-                0,
-                0,
-            )
-
-            group_layout.setSpacing(10)
-
-            # -------------------------------------------------
-            # Date header
-            # -------------------------------------------------
-
-            date_header = QHBoxLayout()
-
-            date_header.setContentsMargins(
-                2,
-                0,
-                2,
-                0,
-            )
-
-            date_header.setSpacing(10)
-
-            date_label = QLabel(
-                self.format_group_date(
-                    transaction_date
-                )
-            )
-
-            date_label.setObjectName(
-                "transaction_group_date"
-            )
-
-            date_header.addWidget(
-                date_label
-            )
-
-            date_header.addStretch()
-
-            # -------------------------------------------------
-            # Day total
-            # -------------------------------------------------
-
-            group_total_cents = sum(
-                transaction["amount_cents"]
-                for transaction
-                in date_transactions
-            )
-
-            if group_total_cents >= 0:
-                group_total_text = (
-                    "+"
-                    + self.format_amount(
-                        group_total_cents / 100
-                    )
-                )
-
-            else:
-                group_total_text = (
-                    "-"
-                    + self.format_amount(
-                        abs(
-                            group_total_cents
-                        )
-                        / 100
-                    )
-                )
-
-            group_total_label = QLabel(
-                group_total_text
-            )
-
-            group_total_label.setObjectName(
-                "transaction_group_total"
-            )
-
-            date_header.addWidget(
-                group_total_label
-            )
-
-            group_layout.addLayout(
-                date_header
-            )
-
-            # -------------------------------------------------
-            # Cards
-            # -------------------------------------------------
-
-            for transaction in date_transactions:
-                card = (
-                    self.create_transaction_card(
-                        transaction
-                    )
-                )
-
-                group_layout.addWidget(
-                    card
-                )
-
-            self.transactions_container.addWidget(
-                group
-            )
 
     # =========================================================
     # Transaction card
@@ -1545,13 +1465,18 @@ class TransactionsView(QWidget):
         self,
         transaction,
     ) -> QWidget:
-        transaction_id = transaction["id"]
+
+        transaction_id = (
+            transaction["id"]
+        )
 
         amount_cents = (
             transaction["amount_cents"]
         )
 
-        is_income = amount_cents > 0
+        is_income = (
+            amount_cents > 0
+        )
 
         card = QWidget()
 
@@ -1576,17 +1501,38 @@ class TransactionsView(QWidget):
         )
 
         card_layout.setContentsMargins(
-            22,
-            15,
             18,
-            15,
+            10,
+            16,
+            10,
         )
 
-        card_layout.setSpacing(16)
+        card_layout.setSpacing(12)
 
         # -----------------------------------------------------
         # Color dot
         # -----------------------------------------------------
+
+        dot_container = QWidget()
+
+        dot_container.setFixedWidth(
+            18
+        )
+
+        dot_layout = QVBoxLayout(
+            dot_container
+        )
+
+        dot_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        dot_layout.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
 
         color_dot = QLabel()
 
@@ -1606,10 +1552,14 @@ class TransactionsView(QWidget):
             """
         )
 
+        dot_layout.addWidget(
+            color_dot
+        )
+
         card_layout.addWidget(
-            color_dot,
+            dot_container,
             0,
-            Qt.AlignmentFlag.AlignTop,
+            Qt.AlignmentFlag.AlignVCenter,
         )
 
         # -----------------------------------------------------
@@ -1625,7 +1575,7 @@ class TransactionsView(QWidget):
             0,
         )
 
-        information_layout.setSpacing(3)
+        information_layout.setSpacing(2)
 
         category_name = (
             transaction["category_name"]
@@ -1649,34 +1599,47 @@ class TransactionsView(QWidget):
             or ""
         )
 
-        if note:
-            note_label = QLabel(note)
-
-            note_label.setObjectName(
-                "transaction_note"
-            )
-
-            note_label.setWordWrap(True)
-
-            information_layout.addWidget(
-                note_label
-            )
-
         account_name = (
             transaction["account_name"]
             or "Unknown account"
         )
 
-        account_label = QLabel(
-            account_name
+        # -----------------------------------------------------
+        # Secondary information
+        #
+        # Example:
+        # Revolut · Note: Lidl
+        #
+        # Without note:
+        # Revolut
+        # -----------------------------------------------------
+
+        if note:
+            secondary_text = (
+                f"{account_name} · Note: {note}"
+            )
+
+        else:
+            secondary_text = account_name
+
+        secondary_label = QLabel(
+            secondary_text
         )
 
-        account_label.setObjectName(
-            "transaction_account"
+        secondary_label.setObjectName(
+            "transaction_secondary"
+        )
+
+        secondary_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.NoTextInteraction
+        )
+
+        secondary_label.setToolTip(
+            secondary_text
         )
 
         information_layout.addWidget(
-            account_label
+            secondary_label
         )
 
         card_layout.addLayout(
@@ -1710,7 +1673,8 @@ class TransactionsView(QWidget):
         )
 
         card_layout.addWidget(
-            date_label
+            date_label,
+            0,
         )
 
         # -----------------------------------------------------
@@ -1748,7 +1712,8 @@ class TransactionsView(QWidget):
         )
 
         card_layout.addWidget(
-            amount_label
+            amount_label,
+            0,
         )
 
         # -----------------------------------------------------
@@ -1766,7 +1731,9 @@ class TransactionsView(QWidget):
 
         actions_layout.setSpacing(8)
 
+        # -----------------------------------------------------
         # Edit
+        # -----------------------------------------------------
 
         edit_button = QPushButton(
             "Edit"
@@ -1777,8 +1744,8 @@ class TransactionsView(QWidget):
         )
 
         edit_button.setFixedSize(
-            62,
-            36,
+            76,
+            38,
         )
 
         edit_button.setCursor(
@@ -1793,7 +1760,9 @@ class TransactionsView(QWidget):
             )
         )
 
+        # -----------------------------------------------------
         # Delete
+        # -----------------------------------------------------
 
         delete_button = QPushButton(
             "Delete"
@@ -1804,8 +1773,8 @@ class TransactionsView(QWidget):
         )
 
         delete_button.setFixedSize(
-            68,
-            36,
+            88,
+            38,
         )
 
         delete_button.setCursor(
@@ -1846,6 +1815,7 @@ class TransactionsView(QWidget):
         self,
         transaction_id: int,
     ) -> None:
+
         transaction = get_transaction(
             transaction_id
         )
@@ -1884,6 +1854,7 @@ class TransactionsView(QWidget):
                     amount
                 )
             )
+
         else:
             amount_text = (
                 "-"
@@ -1905,7 +1876,7 @@ class TransactionsView(QWidget):
             cancel_text="",
         )
 
-        # Hide unused Cancel button.
+        # Only Close button is needed.
         modal.cancel_button.hide()
 
         # -----------------------------------------------------
@@ -1924,6 +1895,7 @@ class TransactionsView(QWidget):
                 font-weight: 700;
                 """
             )
+
         else:
             amount_label.setStyleSheet(
                 """
@@ -1938,7 +1910,7 @@ class TransactionsView(QWidget):
         )
 
         # -----------------------------------------------------
-        # Details
+        # Details frame
         # -----------------------------------------------------
 
         details_frame = QFrame()
@@ -1980,7 +1952,7 @@ class TransactionsView(QWidget):
             14,
         )
 
-        details_layout.setSpacing(12)
+        details_layout.setSpacing(11)
 
         self.add_detail_row(
             details_layout,
@@ -2010,10 +1982,8 @@ class TransactionsView(QWidget):
             details_frame
         )
 
-        # -----------------------------------------------------
-        # Modal events
-        # -----------------------------------------------------
-
+        # Modal's own signals are used here.
+        # Modal does not have close_modal().
         modal.submitted.connect(
             self.close_nested_modal
         )
@@ -2032,6 +2002,7 @@ class TransactionsView(QWidget):
         label_text: str,
         value_text: str,
     ) -> None:
+
         row = QVBoxLayout()
 
         row.setContentsMargins(
@@ -2080,6 +2051,7 @@ class TransactionsView(QWidget):
     def open_add_transaction_dialog(
         self,
     ) -> None:
+
         dialog = AddTransactionDialog(
             parent=self.window()
         )
@@ -2100,6 +2072,7 @@ class TransactionsView(QWidget):
         self,
         transaction_id: int,
     ) -> None:
+
         try:
             dialog = EditTransactionDialog(
                 transaction_id=transaction_id,
@@ -2127,6 +2100,7 @@ class TransactionsView(QWidget):
         category_name: str,
         amount_text: str,
     ) -> None:
+
         modal = Modal(
             title="Delete transaction?",
             subtitle=(
@@ -2191,6 +2165,7 @@ class TransactionsView(QWidget):
         self,
         transaction_id: int,
     ) -> None:
+
         try:
             delete_transaction(
                 transaction_id
@@ -2211,6 +2186,7 @@ class TransactionsView(QWidget):
     def on_transaction_dialog_finished(
         self,
     ) -> None:
+
         self.window().close_modal()
 
         self.refresh_transactions()
@@ -2218,13 +2194,17 @@ class TransactionsView(QWidget):
     def close_nested_modal(
         self,
     ) -> None:
+
         self.window().close_modal()
 
     # =========================================================
     # Clear filters
     # =========================================================
 
-    def clear_filters(self) -> None:
+    def clear_filters(
+        self,
+    ) -> None:
+
         self.search_input.clear()
 
         self.account_filter.setCurrentIndex(
@@ -2253,6 +2233,7 @@ class TransactionsView(QWidget):
     def format_amount(
         amount: float,
     ) -> str:
+
         return (
             f"{amount:,.2f} €"
             .replace(",", "X")
@@ -2264,6 +2245,7 @@ class TransactionsView(QWidget):
     def format_date(
         date_value: str,
     ) -> str:
+
         try:
             year, month, day = (
                 date_value.split("-")
@@ -2271,47 +2253,6 @@ class TransactionsView(QWidget):
 
             return (
                 f"{day}.{month}.{year}"
-            )
-
-        except (
-            ValueError,
-            AttributeError,
-        ):
-            return date_value
-
-    @staticmethod
-    def format_group_date(
-        date_value: str,
-    ) -> str:
-        try:
-            year, month, day = (
-                date_value.split("-")
-            )
-
-            month_names = {
-                "01": "January",
-                "02": "February",
-                "03": "March",
-                "04": "April",
-                "05": "May",
-                "06": "June",
-                "07": "July",
-                "08": "August",
-                "09": "September",
-                "10": "October",
-                "11": "November",
-                "12": "December",
-            }
-
-            month_name = month_names.get(
-                month,
-                month,
-            )
-
-            return (
-                f"{int(day)} "
-                f"{month_name} "
-                f"{year}"
             )
 
         except (
@@ -2328,6 +2269,7 @@ class TransactionsView(QWidget):
     def get_transaction_color(
         transaction,
     ) -> str:
+
         colors = [
             "#3B82F6",
             "#8B5CF6",
