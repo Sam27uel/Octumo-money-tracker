@@ -1,5 +1,5 @@
 from PySide6.QtCore import QRegularExpression, Qt
-from PySide6.QtGui import QRegularExpressionValidator
+from PySide6.QtGui import QRegularExpressionValidator, QShowEvent
 from PySide6.QtWidgets import (
     QFormLayout,
     QFrame,
@@ -29,6 +29,14 @@ class AccountsView(QWidget):
         super().__init__(parent)
 
         self.build_ui()
+        self.refresh_accounts()
+
+    # =================================================
+    # Refresh when Accounts view becomes visible
+    # =================================================
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
         self.refresh_accounts()
 
     # =================================================

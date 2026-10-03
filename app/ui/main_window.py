@@ -61,13 +61,9 @@ class MainWindow(QMainWindow):
 
         # Navigation buttons
         self.dashboard_button = QPushButton("Dashboard")
-        self.transactions_button = QPushButton(
-            "Transactions"
-        )
+        self.transactions_button = QPushButton("Transactions")
         self.accounts_button = QPushButton("Accounts")
-        self.categories_button = QPushButton(
-            "Categories"
-        )
+        self.categories_button = QPushButton("Categories")
         self.settings_button = QPushButton("Settings")
 
         buttons = [
@@ -89,11 +85,17 @@ class MainWindow(QMainWindow):
         # Pages
         self.pages = QStackedWidget()
 
-        self.pages.addWidget(DashboardView())
-        self.pages.addWidget(TransactionsView())
-        self.pages.addWidget(AccountsView())
-        self.pages.addWidget(CategoriesView())
-        self.pages.addWidget(SettingsView())
+        self.dashboard_view = DashboardView()
+        self.transactions_view = TransactionsView()
+        self.accounts_view = AccountsView()
+        self.categories_view = CategoriesView()
+        self.settings_view = SettingsView()
+
+        self.pages.addWidget(self.dashboard_view)
+        self.pages.addWidget(self.transactions_view)
+        self.pages.addWidget(self.accounts_view)
+        self.pages.addWidget(self.categories_view)
+        self.pages.addWidget(self.settings_view)
 
         # Navigation connections
         self.dashboard_button.clicked.connect(
@@ -267,7 +269,10 @@ class MainWindow(QMainWindow):
             event,
         )
 
-    def show_modal(self, content: QWidget) -> None:
+    def show_modal(
+        self,
+        content: QWidget,
+    ) -> None:
         """
         Display a content widget inside the application
         modal overlay.
