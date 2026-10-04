@@ -9,6 +9,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
@@ -17,17 +18,20 @@ from PySide6.QtWidgets import (
     QListView,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
+    QScrollArea,
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QListWidget,
-    QListWidgetItem,
-    
 )
 
 from app.services.account_service import list_accounts
 from app.services.category_service import list_categories
 from app.services.transaction_service import create_transaction
+from app.services.recurring_transaction_service import (
+    create_recurring_transaction,
+    generate_due_transactions,
+)
 from app.ui.date_picker import OctumoDateEdit
 
 
@@ -35,290 +39,16 @@ from app.ui.date_picker import OctumoDateEdit
 # Modern Combo Box
 # =========================================================
 
-class RoundedComboPopup(QWidget):
-    def __init__(self, combo_box):
-        super().__init__(None)
 
-        self.combo_box = combo_box
-
-        # ---------------------------------------------------------
-        # POPUP WINDOW
-        # ---------------------------------------------------------
-
-        self.setWindowFlags(
-            Qt.WindowType.Popup
-            | Qt.WindowType.FramelessWindowHint
-        )
-
-        self.setAttribute(
-            Qt.WidgetAttribute.WA_TranslucentBackground
-        )
-
-        self.setAttribute(
-            Qt.WidgetAttribute.WA_NoSystemBackground
-        )
-
-        self.setObjectName(
-            "rounded_combo_popup_window"
-        )
-
-        # ---------------------------------------------------------
-        # OUTER LAYOUT
-        # ---------------------------------------------------------
-
-        outer_layout = QVBoxLayout(self)
-
-        outer_layout.setContentsMargins(
-            1,
-            1,
-            1,
-            1,
-        )
-
-        outer_layout.setSpacing(0)
-
-        # ---------------------------------------------------------
-        # ACTUAL ROUNDED SURFACE
-        # ---------------------------------------------------------
-
-        self.surface = QFrame()
-
-        self.surface.setObjectName(
-            "rounded_combo_surface"
-        )
-
-        self.surface.setFrameShape(
-            QFrame.Shape.NoFrame
-        )
-
-        self.surface.setAttribute(
-            Qt.WidgetAttribute.WA_StyledBackground
-        )
-
-        self.surface.setStyleSheet(
-            """
-            QFrame#rounded_combo_surface {
-                background-color: #FFFFFF;
-                border: 1px solid #CBD5E1;
-                border-radius: 16px;
-            }
-            """
-        )
-
-        outer_layout.addWidget(
-            self.surface
-        )
-
-        # ---------------------------------------------------------
-        # SURFACE LAYOUT
-        # ---------------------------------------------------------
-
-        layout = QVBoxLayout(
-            self.surface
-        )
-
-        layout.setContentsMargins(
-            7,
-            7,
-            7,
-            7,
-        )
-
-        layout.setSpacing(3)
-
-        # ---------------------------------------------------------
-        # OPTIONS
-        # ---------------------------------------------------------
-
-        self.list_widget = QListWidget()
-
-        self.list_widget.setObjectName(
-            "rounded_combo_options"
-        )
-
-        self.list_widget.setFrameShape(
-            QFrame.Shape.NoFrame
-        )
-
-        self.list_widget.setFrameShadow(
-            QFrame.Shadow.Plain
-        )
-
-        self.list_widget.setLineWidth(0)
-
-        self.list_widget.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-
-        self.list_widget.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-
-        self.list_widget.setSpacing(3)
-
-        self.list_widget.setFocusPolicy(
-            Qt.FocusPolicy.NoFocus
-        )
-
-        self.list_widget.setStyleSheet(
-            """
-            QListWidget#rounded_combo_options {
-                background: transparent;
-                border: none;
-                outline: none;
-                padding: 0px;
-            }
-
-            QListWidget#rounded_combo_options::item {
-                background: transparent;
-
-                color: #17233B;
-
-                min-height: 38px;
-
-                padding-left: 12px;
-                padding-right: 12px;
-
-                border-radius: 10px;
-
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            QListWidget#rounded_combo_options::item:hover {
-                background: #F1F5F9;
-                color: #17233B;
-            }
-
-            QListWidget#rounded_combo_options::item:selected {
-                background: #E8EDF5;
-                color: #17233B;
-            }
-
-            QListWidget#rounded_combo_options QScrollBar:vertical {
-                width: 6px;
-
-                background: transparent;
-                border: none;
-
-                margin: 6px 2px 6px 0px;
-            }
-
-            QListWidget#rounded_combo_options QScrollBar::handle:vertical {
-                background: #CBD5E1;
-
-                min-height: 30px;
-
-                border-radius: 3px;
-            }
-
-            QListWidget#rounded_combo_options QScrollBar::add-line:vertical,
-            QListWidget#rounded_combo_options QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-
-            QListWidget#rounded_combo_options QScrollBar::add-page:vertical,
-            QListWidget#rounded_combo_options QScrollBar::sub-page:vertical {
-                background: transparent;
-            }
-            """
-        )
-
-        layout.addWidget(
-            self.list_widget
-        )
-
-        # ---------------------------------------------------------
-        # CLICK
-        # ---------------------------------------------------------
-
-        self.list_widget.itemClicked.connect(
-            self._item_clicked
-        )
-
-    # -------------------------------------------------------------
-    # ITEM CLICKED
-    # -------------------------------------------------------------
-
-    def _item_clicked(self, item):
-        index = item.data(
-            Qt.ItemDataRole.UserRole
-        )
-
-        if index is None:
-            return
-
-        self.combo_box.setCurrentIndex(
-            index
-        )
-
-        self.hide()
-
-    # -------------------------------------------------------------
-    # REFRESH
-    # -------------------------------------------------------------
-
-    def refresh_items(self):
-        self.list_widget.clear()
-
-        for index in range(
-            self.combo_box.count()
-        ):
-            item = QListWidgetItem(
-                self.combo_box.itemText(index)
-            )
-
-            item.setData(
-                Qt.ItemDataRole.UserRole,
-                index
-            )
-
-            self.list_widget.addItem(
-                item
-            )
-
-        # ---------------------------------------------------------
-        # CURRENT ITEM
-        # ---------------------------------------------------------
-
-        current_index = (
-            self.combo_box.currentIndex()
-        )
-
-        if current_index >= 0:
-            self.list_widget.setCurrentRow(
-                current_index
-            )
-
-        # ---------------------------------------------------------
-        # HEIGHT
-        # ---------------------------------------------------------
-
-        item_count = (
-            self.combo_box.count()
-        )
-
-        visible_items = min(
-            item_count,
-            7
-        )
-
-        item_height = 41
-
-        popup_height = (
-            visible_items * item_height
-            + 16
-        )
-
-        self.setFixedHeight(
-            max(
-                54,
-                popup_height
-            )
-        )
-        
 class ModernComboBox(QComboBox):
-    def __init__(self, parent=None):
+    """
+    Modern Octumo-style combo box.
+
+    Uses a custom QToolButton for the dropdown arrow,
+    matching the arrow used by OctumoDateEdit.
+    """
+
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
         self.setObjectName(
@@ -327,29 +57,144 @@ class ModernComboBox(QComboBox):
 
         self.setFixedHeight(42)
 
+        # -------------------------------------------------
+        # Popup view
+        # -------------------------------------------------
+
+        view = QListView()
+
+        view.setObjectName(
+            "modern_combo_popup"
+        )
+
+        view.setFrameShape(
+            QFrame.Shape.NoFrame
+        )
+
+        view.setFrameShadow(
+            QFrame.Shadow.Plain
+        )
+
+        view.setSpacing(2)
+
+        view.setUniformItemSizes(
+            True
+        )
+
+        view.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        view.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        view.setSelectionMode(
+            QListView.SelectionMode.SingleSelection
+        )
+
+        view.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )
+
+        view.setWindowFlags(
+            Qt.WindowType.Popup
+            | Qt.WindowType.FramelessWindowHint
+        )
+
+        view.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground,
+            False,
+        )
+
+        view.setAutoFillBackground(
+            True
+        )
+
+        palette = view.palette()
+
+        palette.setColor(
+            view.palette().ColorRole.Window,
+            Qt.GlobalColor.white,
+        )
+
+        palette.setColor(
+            view.palette().ColorRole.Base,
+            Qt.GlobalColor.white,
+        )
+
+        palette.setColor(
+            view.palette().ColorRole.Text,
+            Qt.GlobalColor.black,
+        )
+
+        view.setPalette(
+            palette
+        )
+
+        self.setView(
+            view
+        )
+
+        # -------------------------------------------------
+        # Dropdown arrow button
+        # -------------------------------------------------
+
+        self.dropdown_button = QToolButton(
+            self
+        )
+
+        self.dropdown_button.setObjectName(
+            "modern_combo_dropdown_button"
+        )
+
+        self.dropdown_button.setText(
+            "▼"
+        )
+
+        self.dropdown_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.dropdown_button.setFixedSize(
+            34,
+            34,
+        )
+
+        self.dropdown_button.setFocusPolicy(
+            Qt.FocusPolicy.NoFocus
+        )
+
+        self.dropdown_button.clicked.connect(
+            self.showPopup
+        )
+
+        # -------------------------------------------------
+        # Style
+        # -------------------------------------------------
+
         self.setStyleSheet(
             """
             QComboBox#modern_combo_box {
-                background: #FFFFFF;
+                background-color: #FFFFFF;
+                color: #0F172A;
 
                 border: 1px solid #CBD5E1;
-                border-radius: 12px;
+                border-radius: 9px;
 
-                color: #17233B;
+                padding-left: 12px;
+                padding-right: 38px;
 
-                font-size: 15px;
-                font-weight: 600;
-
-                padding-left: 14px;
-                padding-right: 42px;
+                font-size: 14px;
             }
 
             QComboBox#modern_combo_box:hover {
-                border: 1px solid #94A3B8;
+                border-color: #94A3B8;
             }
 
             QComboBox#modern_combo_box:focus {
-                border: 1px solid #17233B;
+                border-color: #64748B;
+                background-color: #FFFFFF;
             }
 
             QComboBox#modern_combo_box::drop-down {
@@ -363,136 +208,192 @@ class ModernComboBox(QComboBox):
                 width: 0px;
                 height: 0px;
             }
-            """
-        )
 
-        self.arrow_button = QToolButton(self)
+            QToolButton#modern_combo_dropdown_button {
+                background-color: transparent;
 
-        self.arrow_button.setObjectName(
-            "octumo_combo_arrow"
-        )
-
-        self.arrow_button.setText("▼")
-
-        self.arrow_button.setFixedSize(
-            34,
-            34,
-        )
-
-        self.arrow_button.setCursor(
-            Qt.CursorShape.PointingHandCursor
-        )
-
-        self.arrow_button.setFocusPolicy(
-            Qt.FocusPolicy.NoFocus
-        )
-
-        self.arrow_button.setStyleSheet(
-            """
-            QToolButton#octumo_combo_arrow {
-                background: transparent;
                 border: none;
 
-                color: #17233B;
+                color: #17243A;
 
                 font-size: 13px;
                 font-weight: 700;
 
                 padding: 0px;
-                margin: 0px;
             }
 
-            QToolButton#octumo_combo_arrow:hover {
+            QToolButton#modern_combo_dropdown_button:hover {
+                background-color: #F1F5F9;
+
+                border-radius: 9px;
+
                 color: #0F172A;
+            }
+
+            QToolButton#modern_combo_dropdown_button:pressed {
+                background-color: #E2E8F0;
+
+                border-radius: 9px;
+            }
+
+            QListView#modern_combo_popup {
+                background-color: #FFFFFF;
+                color: #0F172A;
+
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+
+                padding: 6px;
+
+                outline: none;
+            }
+
+            QListView#modern_combo_popup::item {
+                background-color: transparent;
+                color: #0F172A;
+
+                min-height: 36px;
+
+                padding-left: 10px;
+                padding-right: 10px;
+
+                border-radius: 8px;
+            }
+
+            QListView#modern_combo_popup::item:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+            }
+
+            QListView#modern_combo_popup::item:selected {
+                background-color: #F1F5F9;
+                color: #0F172A;
+            }
+
+            QListView#modern_combo_popup::item:selected:hover {
+                background-color: #E2E8F0;
+                color: #0F172A;
+            }
+
+            QListView#modern_combo_popup QScrollBar:vertical {
+                background: transparent;
+
+                width: 6px;
+
+                margin-top: 7px;
+                margin-bottom: 7px;
+                margin-right: 3px;
+
+                border: none;
+            }
+
+            QListView#modern_combo_popup QScrollBar::handle:vertical {
+                background: #CBD5E1;
+
+                border-radius: 3px;
+
+                min-height: 28px;
+            }
+
+            QListView#modern_combo_popup QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+
+            QListView#modern_combo_popup QScrollBar::add-line:vertical,
+            QListView#modern_combo_popup QScrollBar::sub-line:vertical {
+                height: 0px;
+
+                border: none;
+
+                background: transparent;
+            }
+
+            QListView#modern_combo_popup QScrollBar::add-page:vertical,
+            QListView#modern_combo_popup QScrollBar::sub-page:vertical {
+                background: transparent;
             }
             """
         )
 
-        self.arrow_button.clicked.connect(
-            self.showPopup
-        )
+        self._position_dropdown_button()
 
-        self._custom_popup = RoundedComboPopup(
-            self
-        )
+    # =====================================================
+    # Position dropdown button
+    # =====================================================
 
-        self._position_arrow_button()
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
 
-    def showPopup(self):
-        self._custom_popup.refresh_items()
+        self._position_dropdown_button()
 
-        self._custom_popup.setFixedWidth(
-            self.width()
-        )
+    def _position_dropdown_button(self) -> None:
 
-        position = self.mapToGlobal(
-            self.rect().bottomLeft()
-        )
-
-        self._custom_popup.move(
-            position.x(),
-            position.y() + 6,
-        )
-
-        self._custom_popup.show()
-        self._custom_popup.raise_()
-
-    def hidePopup(self):
-        if hasattr(
-            self,
-            "_custom_popup",
-        ):
-            self._custom_popup.hide()
-
-    def _position_arrow_button(self):
         if not hasattr(
             self,
-            "arrow_button",
+            "dropdown_button",
         ):
             return
 
-        x = (
+        button_x = (
             self.width()
-            - self.arrow_button.width()
-            - 6
+            - self.dropdown_button.width()
+            - 4
         )
 
-        y = (
+        button_y = (
             self.height()
-            - self.arrow_button.height()
+            - self.dropdown_button.height()
         ) // 2
 
-        self.arrow_button.move(
-            x,
-            y
+        self.dropdown_button.move(
+            button_x,
+            button_y,
         )
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._position_arrow_button()
+        self.dropdown_button.raise_()
+
+    # =====================================================
+    # Popup
+    # =====================================================
+
+    def showPopup(self) -> None:
+        super().showPopup()
+
+        self.dropdown_button.raise_()
 
 
 # =========================================================
 # Transaction Type Selector
 # =========================================================
 
-class TransactionTypeSelector(QWidget):
 
+class TransactionTypeSelector(QWidget):
     type_changed = Signal(str)
 
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
+
+        super().__init__(
+            parent
+        )
 
         self.selected_kind = "income"
+
         self._animation = None
 
         self.setObjectName(
             "transaction_type_selector"
         )
 
-        self.setFixedHeight(44)
+        self.setFixedHeight(
+            44
+        )
 
-        self.indicator = QFrame(self)
+        self.indicator = QFrame(
+            self
+        )
 
         self.indicator.setObjectName(
             "transaction_type_indicator"
@@ -516,14 +417,25 @@ class TransactionTypeSelector(QWidget):
             "transaction_type_button"
         )
 
-        self.income_button.setCheckable(True)
-        self.expense_button.setCheckable(True)
+        self.income_button.setCheckable(
+            True
+        )
 
-        self.income_button.setChecked(True)
+        self.expense_button.setCheckable(
+            True
+        )
 
-        self.type_group = QButtonGroup(self)
+        self.income_button.setChecked(
+            True
+        )
 
-        self.type_group.setExclusive(True)
+        self.type_group = QButtonGroup(
+            self
+        )
+
+        self.type_group.setExclusive(
+            True
+        )
 
         self.type_group.addButton(
             self.income_button
@@ -549,23 +461,29 @@ class TransactionTypeSelector(QWidget):
             """
             QWidget#transaction_type_selector {
                 background-color: #F1F5F9;
+
                 border: 1px solid #E2E8F0;
+
                 border-radius: 10px;
             }
 
             QFrame#transaction_type_indicator {
                 background-color: #0F172A;
+
                 border-radius: 9px;
             }
 
             QPushButton#transaction_type_button {
                 background-color: transparent;
+
                 color: #64748B;
 
                 border: none;
+
                 border-radius: 9px;
 
                 font-size: 14px;
+
                 font-weight: 600;
             }
 
@@ -575,43 +493,67 @@ class TransactionTypeSelector(QWidget):
 
             QPushButton#transaction_type_button:checked {
                 background-color: transparent;
+
                 color: #FFFFFF;
             }
 
             QPushButton#transaction_type_button:checked:hover {
                 background-color: transparent;
+
                 color: #FFFFFF;
             }
             """
         )
 
         self.income_button.raise_()
+
         self.expense_button.raise_()
 
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        self.update_layout(animated=False)
+    def showEvent(
+        self,
+        event,
+    ) -> None:
 
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        self.update_layout(animated=False)
+        super().showEvent(
+            event
+        )
+
+        self.update_layout(
+            animated=False
+        )
+
+    def resizeEvent(
+        self,
+        event,
+    ) -> None:
+
+        super().resizeEvent(
+            event
+        )
+
+        self.update_layout(
+            animated=False
+        )
 
     def update_layout(
         self,
         animated: bool = True,
     ) -> None:
+
         margin = 1
 
-        available_width = (
-            self.width() - 2 * margin
+        available_width = max(
+            0,
+            self.width() - 2 * margin,
         )
 
         button_width = (
             available_width // 2
         )
 
-        button_height = (
-            self.height() - 2 * margin
+        button_height = max(
+            0,
+            self.height() - 2 * margin,
         )
 
         target_x = (
@@ -650,9 +592,11 @@ class TransactionTypeSelector(QWidget):
         )
 
         if not animated:
+
             self.indicator.setGeometry(
                 target_rect
             )
+
             return
 
         animation = QPropertyAnimation(
@@ -661,7 +605,9 @@ class TransactionTypeSelector(QWidget):
             self,
         )
 
-        animation.setDuration(180)
+        animation.setDuration(
+            180
+        )
 
         animation.setStartValue(
             self.indicator.geometry()
@@ -676,12 +622,14 @@ class TransactionTypeSelector(QWidget):
         )
 
         self._animation = animation
+
         animation.start()
 
     def set_transaction_type(
         self,
         kind: str,
     ) -> None:
+
         if kind not in {
             "income",
             "expense",
@@ -701,26 +649,34 @@ class TransactionTypeSelector(QWidget):
             kind == "expense"
         )
 
-        self.update_layout(animated=True)
+        self.update_layout(
+            animated=True
+        )
 
-        self.type_changed.emit(kind)
+        self.type_changed.emit(
+            kind
+        )
 
 
 # =========================================================
 # Add Transaction Dialog
 # =========================================================
 
-class AddTransactionDialog(QWidget):
 
+class AddTransactionDialog(QWidget):
     finished = Signal()
 
     def __init__(
         self,
         parent=None,
     ) -> None:
-        super().__init__(parent)
+
+        super().__init__(
+            parent
+        )
 
         self.accounts = []
+
         self.categories = []
 
         self.setObjectName(
@@ -730,7 +686,13 @@ class AddTransactionDialog(QWidget):
         self.build_ui()
 
         self.load_accounts()
+
         self.load_categories()
+
+        try:
+            generate_due_transactions()
+        except Exception:
+            pass
 
     # =====================================================
     # UI
@@ -738,7 +700,9 @@ class AddTransactionDialog(QWidget):
 
     def build_ui(self) -> None:
 
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout(
+            self
+        )
 
         layout.setContentsMargins(
             0,
@@ -747,7 +711,70 @@ class AddTransactionDialog(QWidget):
             0,
         )
 
-        layout.setSpacing(0)
+        layout.setSpacing(
+            0
+        )
+
+        # -------------------------------------------------
+        # Scroll area
+        # -------------------------------------------------
+
+        self.scroll_area = QScrollArea()
+
+        self.scroll_area.setObjectName(
+            "dialog_scroll_area"
+        )
+
+        self.scroll_area.setWidgetResizable(
+            True
+        )
+
+        self.scroll_area.setFrameShape(
+            QFrame.Shape.NoFrame
+        )
+
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        self.scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+
+        scroll_content = QWidget()
+
+        scroll_content.setObjectName(
+            "dialog_scroll_content"
+        )
+
+        content_layout = QVBoxLayout(
+            scroll_content
+        )
+
+        content_layout.setContentsMargins(
+            0,
+            0,
+            8,
+            10,
+        )
+
+        content_layout.setSpacing(
+            0
+        )
+
+        self.scroll_area.setWidget(
+            scroll_content
+        )
+
+        layout.addWidget(
+            self.scroll_area,
+            1,
+        )
 
         # -------------------------------------------------
         # Header
@@ -769,13 +796,25 @@ class AddTransactionDialog(QWidget):
             "dialog_subtitle"
         )
 
-        subtitle.setWordWrap(True)
+        subtitle.setWordWrap(
+            True
+        )
 
-        layout.addWidget(title)
-        layout.addSpacing(5)
-        layout.addWidget(subtitle)
+        content_layout.addWidget(
+            title
+        )
 
-        layout.addSpacing(24)
+        content_layout.addSpacing(
+            5
+        )
+
+        content_layout.addWidget(
+            subtitle
+        )
+
+        content_layout.addSpacing(
+            24
+        )
 
         # -------------------------------------------------
         # Transaction
@@ -789,25 +828,27 @@ class AddTransactionDialog(QWidget):
             "section_title"
         )
 
-        layout.addWidget(
+        content_layout.addWidget(
             transaction_title
         )
 
-        layout.addSpacing(14)
+        content_layout.addSpacing(
+            14
+        )
 
         # -------------------------------------------------
         # Type
         # -------------------------------------------------
 
-        type_label = QLabel("Type")
+        type_label = QLabel(
+            "Type"
+        )
 
         type_label.setObjectName(
             "field_label"
         )
 
-        self.type_input = (
-            TransactionTypeSelector()
-        )
+        self.type_input = TransactionTypeSelector()
 
         type_container = QWidget()
 
@@ -822,21 +863,28 @@ class AddTransactionDialog(QWidget):
             0,
         )
 
-        type_layout.setSpacing(7)
+        type_layout.setSpacing(
+            7
+        )
 
-        type_layout.addWidget(type_label)
+        type_layout.addWidget(
+            type_label
+        )
+
         type_layout.addWidget(
             self.type_input
         )
 
-        layout.addWidget(
+        content_layout.addWidget(
             type_container
         )
 
-        layout.addSpacing(15)
+        content_layout.addSpacing(
+            15
+        )
 
         # -------------------------------------------------
-        # Grid
+        # Fields grid
         # -------------------------------------------------
 
         fields_grid = QGridLayout()
@@ -848,17 +896,20 @@ class AddTransactionDialog(QWidget):
             0,
         )
 
-        fields_grid.setHorizontalSpacing(14)
-        fields_grid.setVerticalSpacing(15)
+        fields_grid.setHorizontalSpacing(
+            14
+        )
+
+        fields_grid.setVerticalSpacing(
+            15
+        )
 
         # -------------------------------------------------
         # Amount
         # -------------------------------------------------
 
-        amount_container = (
-            self.create_field_container(
-                "Amount"
-            )
+        amount_container = self.create_field_container(
+            "Amount"
         )
 
         self.amount_input = QLineEdit()
@@ -867,7 +918,9 @@ class AddTransactionDialog(QWidget):
             "0.00"
         )
 
-        self.amount_input.setFixedHeight(42)
+        self.amount_input.setFixedHeight(
+            42
+        )
 
         amount_container.layout().addWidget(
             self.amount_input
@@ -877,10 +930,8 @@ class AddTransactionDialog(QWidget):
         # Date
         # -------------------------------------------------
 
-        date_container = (
-            self.create_field_container(
-                "Date"
-            )
+        date_container = self.create_field_container(
+            "Date"
         )
 
         self.date_input = OctumoDateEdit()
@@ -893,10 +944,8 @@ class AddTransactionDialog(QWidget):
         # Account
         # -------------------------------------------------
 
-        account_container = (
-            self.create_field_container(
-                "Account"
-            )
+        account_container = self.create_field_container(
+            "Account"
         )
 
         self.account_input = ModernComboBox()
@@ -909,10 +958,8 @@ class AddTransactionDialog(QWidget):
         # Category
         # -------------------------------------------------
 
-        category_container = (
-            self.create_field_container(
-                "Category"
-            )
+        category_container = self.create_field_container(
+            "Category"
         )
 
         self.category_input = ModernComboBox()
@@ -949,14 +996,23 @@ class AddTransactionDialog(QWidget):
             1,
         )
 
-        fields_grid.setColumnStretch(0, 1)
-        fields_grid.setColumnStretch(1, 1)
+        fields_grid.setColumnStretch(
+            0,
+            1,
+        )
 
-        layout.addLayout(
+        fields_grid.setColumnStretch(
+            1,
+            1,
+        )
+
+        content_layout.addLayout(
             fields_grid
         )
 
-        layout.addSpacing(23)
+        content_layout.addSpacing(
+            23
+        )
 
         # -------------------------------------------------
         # Separator
@@ -972,36 +1028,163 @@ class AddTransactionDialog(QWidget):
             "dialog_separator"
         )
 
-        layout.addWidget(separator)
+        content_layout.addWidget(
+            separator
+        )
 
-        layout.addSpacing(21)
+        content_layout.addSpacing(
+            18
+        )
 
         # -------------------------------------------------
-        # Details
+        # Recurring
         # -------------------------------------------------
 
-        details_title = QLabel(
-            "Details"
+        recurring_container = QWidget()
+
+        recurring_layout = QVBoxLayout(
+            recurring_container
         )
 
-        details_title.setObjectName(
-            "section_title"
+        recurring_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
         )
 
-        layout.addWidget(
-            details_title
+        recurring_layout.setSpacing(
+            8
         )
 
-        layout.addSpacing(13)
+        self.recurring_checkbox = QCheckBox(
+            "Recurring / Subscription"
+        )
+
+        self.recurring_checkbox.setObjectName(
+            "recurring_checkbox"
+        )
+
+        recurring_layout.addWidget(
+            self.recurring_checkbox
+        )
+
+        # -------------------------------------------------
+        # Frequency
+        # -------------------------------------------------
+
+        self.frequency_container = QWidget()
+
+        frequency_layout = QHBoxLayout(
+            self.frequency_container
+        )
+
+        frequency_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        frequency_layout.setSpacing(
+            10
+        )
+
+        frequency_label = QLabel(
+            "Frequency"
+        )
+
+        frequency_label.setObjectName(
+            "field_label"
+        )
+
+        self.frequency_input = ModernComboBox()
+
+        self.frequency_input.setMinimumWidth(
+            150
+        )
+
+        self.frequency_input.addItem(
+            "Daily",
+            "daily",
+        )
+
+        self.frequency_input.addItem(
+            "Weekly",
+            "weekly",
+        )
+
+        self.frequency_input.addItem(
+            "Monthly",
+            "monthly",
+        )
+
+        self.frequency_input.addItem(
+            "Yearly",
+            "yearly",
+        )
+
+        frequency_layout.addWidget(
+            frequency_label
+        )
+
+        frequency_layout.addWidget(
+            self.frequency_input,
+            1,
+        )
+
+        recurring_layout.addWidget(
+            self.frequency_container
+        )
+
+        self.frequency_container.hide()
+
+        # -------------------------------------------------
+        # Recurring status
+        # -------------------------------------------------
+
+        self.recurring_status_label = QLabel(
+            "Recurring: No"
+        )
+
+        self.recurring_status_label.setObjectName(
+            "recurring_status_label"
+        )
+
+        recurring_layout.addWidget(
+            self.recurring_status_label
+        )
+
+        self.recurring_description_label = QLabel(
+            "This transaction will be added once."
+        )
+
+        self.recurring_description_label.setObjectName(
+            "recurring_description_label"
+        )
+
+        self.recurring_description_label.setWordWrap(
+            True
+        )
+
+        recurring_layout.addWidget(
+            self.recurring_description_label
+        )
+
+        content_layout.addWidget(
+            recurring_container
+        )
+
+        content_layout.addSpacing(
+            17
+        )
 
         # -------------------------------------------------
         # Note
         # -------------------------------------------------
 
-        note_container = (
-            self.create_field_container(
-                "Note"
-            )
+        note_container = self.create_field_container(
+            "Note"
         )
 
         self.note_input = QLineEdit()
@@ -1010,14 +1193,32 @@ class AddTransactionDialog(QWidget):
             "Optional note"
         )
 
-        self.note_input.setFixedHeight(42)
+        self.note_input.setFixedHeight(
+            42
+        )
 
         note_container.layout().addWidget(
             self.note_input
         )
 
-        layout.addWidget(
+        content_layout.addWidget(
             note_container
+        )
+
+        # -------------------------------------------------
+        # Recurring signals
+        # -------------------------------------------------
+
+        self.recurring_checkbox.toggled.connect(
+            self.frequency_container.setVisible
+        )
+
+        self.recurring_checkbox.toggled.connect(
+            self.update_recurring_status
+        )
+
+        self.frequency_input.currentIndexChanged.connect(
+            self.update_recurring_status
         )
 
         # -------------------------------------------------
@@ -1030,31 +1231,49 @@ class AddTransactionDialog(QWidget):
             "dialog_error"
         )
 
-        self.error_label.setWordWrap(True)
+        self.error_label.setWordWrap(
+            True
+        )
+
         self.error_label.hide()
 
-        layout.addSpacing(10)
+        content_layout.addSpacing(
+            10
+        )
 
-        layout.addWidget(
+        content_layout.addWidget(
             self.error_label
+        )
+
+        content_layout.addSpacing(
+            10
+        )
+
+        # -------------------------------------------------
+        # Bottom spacer
+        # -------------------------------------------------
+
+        content_layout.addStretch(
+            1
         )
 
         # -------------------------------------------------
         # Buttons
         # -------------------------------------------------
 
-        layout.addSpacing(20)
-
         buttons_layout = QHBoxLayout()
 
         buttons_layout.setContentsMargins(
             0,
+            14,
             0,
-            0,
-            0,
+            14,
         )
 
-        buttons_layout.setSpacing(10)
+        buttons_layout.setSpacing(
+            10
+        )
+
         buttons_layout.addStretch()
 
         self.cancel_button = QPushButton(
@@ -1065,7 +1284,9 @@ class AddTransactionDialog(QWidget):
             "dialog_cancel_button"
         )
 
-        self.cancel_button.setFixedHeight(42)
+        self.cancel_button.setFixedHeight(
+            42
+        )
 
         self.cancel_button.clicked.connect(
             self.close_dialog
@@ -1083,8 +1304,13 @@ class AddTransactionDialog(QWidget):
             "dialog_primary_button"
         )
 
-        self.save_button.setFixedHeight(42)
-        self.save_button.setMinimumWidth(145)
+        self.save_button.setFixedHeight(
+            42
+        )
+
+        self.save_button.setMinimumWidth(
+            145
+        )
 
         self.save_button.clicked.connect(
             self.save_transaction
@@ -1124,34 +1350,94 @@ class AddTransactionDialog(QWidget):
                 background-color: #FFFFFF;
             }
 
+            QScrollArea#dialog_scroll_area {
+                background-color: #FFFFFF;
+
+                border: none;
+            }
+
+            QScrollArea#dialog_scroll_area > QWidget > QWidget {
+                background-color: #FFFFFF;
+            }
+
+            QWidget#dialog_scroll_content {
+                background-color: #FFFFFF;
+            }
+
+            QScrollArea#dialog_scroll_area QScrollBar:vertical {
+                background: transparent;
+
+                width: 7px;
+
+                margin-top: 2px;
+                margin-bottom: 2px;
+
+                border: none;
+            }
+
+            QScrollArea#dialog_scroll_area QScrollBar::handle:vertical {
+                background: #CBD5E1;
+
+                border-radius: 3px;
+
+                min-height: 40px;
+            }
+
+            QScrollArea#dialog_scroll_area QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+
+            QScrollArea#dialog_scroll_area QScrollBar::add-line:vertical,
+            QScrollArea#dialog_scroll_area QScrollBar::sub-line:vertical {
+                height: 0px;
+
+                border: none;
+
+                background: transparent;
+            }
+
+            QScrollArea#dialog_scroll_area QScrollBar::add-page:vertical,
+            QScrollArea#dialog_scroll_area QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+
             QLabel#dialog_title {
                 color: #0F172A;
+
                 font-size: 25px;
+
                 font-weight: 700;
             }
 
             QLabel#dialog_subtitle {
                 color: #64748B;
+
                 font-size: 14px;
             }
 
             QLabel#section_title {
                 color: #0F172A;
+
                 font-size: 16px;
+
                 font-weight: 700;
             }
 
             QLabel#field_label {
                 color: #334155;
+
                 font-size: 13px;
+
                 font-weight: 600;
             }
 
             QLineEdit {
                 background-color: #FFFFFF;
+
                 color: #0F172A;
 
                 border: 1px solid #CBD5E1;
+
                 border-radius: 9px;
 
                 padding-left: 12px;
@@ -1160,6 +1446,7 @@ class AddTransactionDialog(QWidget):
                 font-size: 14px;
 
                 selection-background-color: #E2E8F0;
+
                 selection-color: #0F172A;
             }
 
@@ -1169,6 +1456,7 @@ class AddTransactionDialog(QWidget):
 
             QLineEdit:focus {
                 border-color: #64748B;
+
                 background-color: #FFFFFF;
             }
 
@@ -1178,30 +1466,36 @@ class AddTransactionDialog(QWidget):
 
             QFrame#dialog_separator {
                 background-color: #E2E8F0;
+
                 color: #E2E8F0;
 
                 border: none;
 
                 min-height: 1px;
+
                 max-height: 1px;
             }
 
             QPushButton#dialog_cancel_button {
                 background-color: #FFFFFF;
+
                 color: #334155;
 
                 border: 1px solid #CBD5E1;
+
                 border-radius: 9px;
 
                 padding-left: 17px;
                 padding-right: 17px;
 
                 font-size: 14px;
+
                 font-weight: 600;
             }
 
             QPushButton#dialog_cancel_button:hover {
                 background-color: #F8FAFC;
+
                 border-color: #94A3B8;
             }
 
@@ -1211,15 +1505,18 @@ class AddTransactionDialog(QWidget):
 
             QPushButton#dialog_primary_button {
                 background-color: #0F172A;
+
                 color: #FFFFFF;
 
                 border: none;
+
                 border-radius: 9px;
 
                 padding-left: 18px;
                 padding-right: 18px;
 
                 font-size: 14px;
+
                 font-weight: 600;
             }
 
@@ -1231,12 +1528,94 @@ class AddTransactionDialog(QWidget):
                 background-color: #334155;
             }
 
+            QCheckBox#recurring_checkbox {
+                color: #0F172A;
+
+                font-size: 14px;
+
+                font-weight: 600;
+
+                spacing: 8px;
+            }
+
+            QCheckBox#recurring_checkbox::indicator {
+                width: 18px;
+
+                height: 18px;
+
+                border: 1px solid #CBD5E1;
+
+                border-radius: 5px;
+
+                background-color: #FFFFFF;
+            }
+
+            QCheckBox#recurring_checkbox::indicator:hover {
+                border-color: #94A3B8;
+            }
+
+            QCheckBox#recurring_checkbox::indicator:checked {
+                background-color: #0F172A;
+
+                border-color: #0F172A;
+            }
+
+            QLabel#recurring_status_label {
+                color: #334155;
+
+                font-size: 13px;
+
+                font-weight: 600;
+            }
+
+            QLabel#recurring_description_label {
+                color: #64748B;
+
+                font-size: 12px;
+            }
+
             QLabel#dialog_error {
                 color: #DC2626;
+
                 font-size: 13px;
+
                 font-weight: 500;
             }
             """
+        )
+
+    # =====================================================
+    # Recurring status
+    # =====================================================
+
+    def update_recurring_status(
+        self,
+    ) -> None:
+
+        if not self.recurring_checkbox.isChecked():
+
+            self.recurring_status_label.setText(
+                "Recurring: No"
+            )
+
+            self.recurring_description_label.setText(
+                "This transaction will be added once."
+            )
+
+            return
+
+        frequency_text = (
+            self.frequency_input.currentText()
+        )
+
+        self.recurring_status_label.setText(
+            f"Recurring: Yes · {frequency_text}"
+        )
+
+        self.recurring_description_label.setText(
+            "This transaction will be added now and future "
+            "transactions will be generated automatically "
+            "according to this frequency."
         )
 
     # =====================================================
@@ -1261,15 +1640,21 @@ class AddTransactionDialog(QWidget):
             0,
         )
 
-        container_layout.setSpacing(7)
+        container_layout.setSpacing(
+            7
+        )
 
-        label = QLabel(label_text)
+        label = QLabel(
+            label_text
+        )
 
         label.setObjectName(
             "field_label"
         )
 
-        container_layout.addWidget(label)
+        container_layout.addWidget(
+            label
+        )
 
         return container
 
@@ -1277,19 +1662,25 @@ class AddTransactionDialog(QWidget):
     # Accounts
     # =====================================================
 
-    def load_accounts(self) -> None:
+    def load_accounts(
+        self,
+    ) -> None:
 
         self.account_input.clear()
 
         accounts = list_accounts()
 
+        self.accounts = accounts
+
         for account in accounts:
+
             self.account_input.addItem(
                 account["name"],
                 account["id"],
             )
 
         if not accounts:
+
             self.account_input.addItem(
                 "No accounts available",
                 None,
@@ -1299,23 +1690,31 @@ class AddTransactionDialog(QWidget):
     # Categories
     # =====================================================
 
-    def load_categories(self) -> None:
+    def load_categories(
+        self,
+    ) -> None:
 
         self.category_input.clear()
 
-        kind = self.type_input.selected_kind
+        kind = (
+            self.type_input.selected_kind
+        )
 
         categories = list_categories(
             kind=kind
         )
 
+        self.categories = categories
+
         for category in categories:
+
             self.category_input.addItem(
                 category["name"],
                 category["id"],
             )
 
         if not categories:
+
             self.category_input.addItem(
                 "No categories available",
                 None,
@@ -1325,87 +1724,131 @@ class AddTransactionDialog(QWidget):
     # Save
     # =====================================================
 
-    def save_transaction(self) -> None:
+    def save_transaction(
+        self,
+    ) -> None:
 
         self.error_label.hide()
+
+        # -------------------------------------------------
+        # Account
+        # -------------------------------------------------
 
         account_id = (
             self.account_input.currentData()
         )
 
         if account_id is None:
+
             self.show_error(
                 "Please select an account."
             )
 
             self.account_input.setFocus()
+
             return
+
+        # -------------------------------------------------
+        # Category
+        # -------------------------------------------------
 
         category_id = (
             self.category_input.currentData()
         )
 
         if category_id is None:
+
             self.show_error(
                 "Please select a category."
             )
 
             self.category_input.setFocus()
+
             return
+
+        # -------------------------------------------------
+        # Amount
+        # -------------------------------------------------
 
         amount_text = (
             self.amount_input
             .text()
             .strip()
-            .replace(",", ".")
+            .replace(
+                ",",
+                ".",
+            )
         )
 
         if not amount_text:
+
             self.show_error(
                 "Please enter an amount."
             )
 
             self.amount_input.setFocus()
+
             return
 
         try:
+
             amount = Decimal(
                 amount_text
             )
 
         except InvalidOperation:
+
             self.show_error(
                 "Please enter a valid amount."
             )
 
             self.amount_input.setFocus()
+
             return
 
         if amount <= 0:
+
             self.show_error(
                 "Amount must be greater than zero."
             )
 
             self.amount_input.setFocus()
+
             return
+
+        # -------------------------------------------------
+        # Amount in cents
+        # -------------------------------------------------
 
         amount_cents = int(
             amount * Decimal("100")
         )
 
         if amount_cents <= 0:
+
             self.show_error(
                 "Amount must be greater than zero."
             )
 
             self.amount_input.setFocus()
+
             return
+
+        # -------------------------------------------------
+        # Date
+        # -------------------------------------------------
 
         transaction_date = (
             self.date_input
             .date()
-            .toString("yyyy-MM-dd")
+            .toString(
+                "yyyy-MM-dd"
+            )
         )
+
+        # -------------------------------------------------
+        # Note
+        # -------------------------------------------------
 
         note = (
             self.note_input
@@ -1413,11 +1856,20 @@ class AddTransactionDialog(QWidget):
             .strip()
         )
 
+        # -------------------------------------------------
+        # Type
+        # -------------------------------------------------
+
         kind = (
             self.type_input.selected_kind
         )
 
+        # -------------------------------------------------
+        # Create normal transaction
+        # -------------------------------------------------
+
         try:
+
             create_transaction(
                 account_id=account_id,
                 category_id=category_id,
@@ -1428,16 +1880,73 @@ class AddTransactionDialog(QWidget):
             )
 
         except ValueError as error:
+
             self.show_error(
                 str(error)
             )
+
             return
 
         except Exception:
+
             self.show_error(
-                "An unexpected error occurred while saving the transaction."
+                "An unexpected error occurred while saving "
+                "the transaction."
             )
+
             return
+
+        # -------------------------------------------------
+        # Create recurring template
+        # -------------------------------------------------
+
+        if self.recurring_checkbox.isChecked():
+
+            recurring_name = (
+                note
+                or self.category_input.currentText()
+                or "Recurring transaction"
+            )
+
+            frequency = (
+                self.frequency_input.currentData()
+            )
+
+            try:
+
+                create_recurring_transaction(
+                    name=recurring_name,
+                    account_id=account_id,
+                    category_id=category_id,
+                    amount_cents=amount_cents,
+                    kind=kind,
+                    note=note,
+                    frequency=frequency,
+                    start_date=transaction_date,
+                )
+
+            except ValueError as error:
+
+                self.show_error(
+                    "Transaction was added, but recurring "
+                    "setup failed: "
+                    f"{error}"
+                )
+
+                return
+
+            except Exception:
+
+                self.show_error(
+                    "Transaction was added, but recurring "
+                    "setup failed."
+                )
+
+                return
+
+        # -------------------------------------------------
+        # Finished
+        # -------------------------------------------------
 
         self.finished.emit()
 
@@ -1456,9 +1965,16 @@ class AddTransactionDialog(QWidget):
 
         self.error_label.show()
 
+        self.scroll_area.ensureWidgetVisible(
+            self.error_label
+        )
+
     # =====================================================
     # Close
     # =====================================================
 
-    def close_dialog(self) -> None:
+    def close_dialog(
+        self,
+    ) -> None:
+
         self.finished.emit()

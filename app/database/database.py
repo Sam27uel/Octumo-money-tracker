@@ -64,6 +64,25 @@ def initialize_database() -> None:
                 FOREIGN KEY (account_id) REFERENCES accounts(id)
                     ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS recurring_transactions (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                account_id INTEGER NOT NULL,
+                category_id INTEGER,
+                amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+                kind TEXT NOT NULL CHECK (kind IN ('income', 'expense')),
+                note TEXT NOT NULL DEFAULT '',
+                frequency TEXT NOT NULL CHECK (
+                    frequency IN ('daily', 'weekly', 'monthly', 'yearly')
+                ),
+                start_date TEXT NOT NULL,
+                next_run_date TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_id) REFERENCES accounts(id),
+                FOREIGN KEY (category_id) REFERENCES categories(id)
+            );
             """
         )
 

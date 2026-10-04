@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from PySide6.QtCore import Qt
+
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -13,11 +14,18 @@ from PySide6.QtWidgets import (
 )
 
 from app.services.account_service import list_accounts
+
 from app.services.category_service import list_categories
+
 from app.services.transaction_service import (
     delete_transaction,
     get_transaction,
     list_transactions,
+)
+
+from app.services.recurring_transaction_service import (
+    generate_due_transactions,
+    list_recurring_transactions,
 )
 
 from app.ui.add_transaction_dialog import (
@@ -38,12 +46,16 @@ class TransactionsView(QWidget):
         self,
         parent=None,
     ) -> None:
+
         super().__init__(parent)
 
         self.all_transactions = []
+        self.recurring_transactions = []
 
         self.build_ui()
+
         self.load_filter_data()
+
         self.refresh_transactions()
 
     # =========================================================
@@ -51,6 +63,7 @@ class TransactionsView(QWidget):
     # =========================================================
 
     def build_ui(self) -> None:
+
         layout = QVBoxLayout(self)
 
         layout.setContentsMargins(
@@ -89,15 +102,26 @@ class TransactionsView(QWidget):
         title_container.setSpacing(5)
 
         title = QLabel("Transactions")
-        title.setObjectName("page_title")
+
+        title.setObjectName(
+            "page_title"
+        )
 
         subtitle = QLabel(
             "View and manage your transactions."
         )
-        subtitle.setObjectName("page_subtitle")
 
-        title_container.addWidget(title)
-        title_container.addWidget(subtitle)
+        subtitle.setObjectName(
+            "page_subtitle"
+        )
+
+        title_container.addWidget(
+            title
+        )
+
+        title_container.addWidget(
+            subtitle
+        )
 
         header_layout.addLayout(
             title_container
@@ -113,8 +137,13 @@ class TransactionsView(QWidget):
             "primary_button"
         )
 
-        self.add_transaction_button.setFixedHeight(42)
-        self.add_transaction_button.setMinimumWidth(150)
+        self.add_transaction_button.setFixedHeight(
+            42
+        )
+
+        self.add_transaction_button.setMinimumWidth(
+            150
+        )
 
         self.add_transaction_button.setCursor(
             Qt.CursorShape.PointingHandCursor
@@ -128,7 +157,9 @@ class TransactionsView(QWidget):
             self.add_transaction_button
         )
 
-        layout.addLayout(header_layout)
+        layout.addLayout(
+            header_layout
+        )
 
         # -----------------------------------------------------
         # Filters
@@ -137,7 +168,10 @@ class TransactionsView(QWidget):
         layout.addSpacing(24)
 
         filters_card = QFrame()
-        filters_card.setObjectName("filters_card")
+
+        filters_card.setObjectName(
+            "filters_card"
+        )
 
         filters_layout = QVBoxLayout(
             filters_card
@@ -166,7 +200,9 @@ class TransactionsView(QWidget):
             "Search transactions..."
         )
 
-        self.search_input.setFixedHeight(40)
+        self.search_input.setFixedHeight(
+            40
+        )
 
         self.search_input.textChanged.connect(
             self.refresh_transactions
@@ -201,7 +237,9 @@ class TransactionsView(QWidget):
             "transaction_filter_combo"
         )
 
-        self.account_filter.setFixedHeight(40)
+        self.account_filter.setFixedHeight(
+            40
+        )
 
         self.account_filter.currentIndexChanged.connect(
             self.refresh_transactions
@@ -222,7 +260,9 @@ class TransactionsView(QWidget):
             "transaction_filter_combo"
         )
 
-        self.category_filter.setFixedHeight(40)
+        self.category_filter.setFixedHeight(
+            40
+        )
 
         self.category_filter.currentIndexChanged.connect(
             self.refresh_transactions
@@ -243,7 +283,9 @@ class TransactionsView(QWidget):
             "transaction_filter_combo"
         )
 
-        self.type_filter.setFixedHeight(40)
+        self.type_filter.setFixedHeight(
+            40
+        )
 
         self.type_filter.addItem(
             "All types",
@@ -279,7 +321,9 @@ class TransactionsView(QWidget):
             "transaction_filter_combo"
         )
 
-        self.date_filter.setFixedHeight(40)
+        self.date_filter.setFixedHeight(
+            40
+        )
 
         self.date_filter.addItem(
             "This month",
@@ -316,6 +360,35 @@ class TransactionsView(QWidget):
         )
 
         # -----------------------------------------------------
+        # Recurring filter
+        # -----------------------------------------------------
+
+        self.recurring_filter_button = QPushButton("↻ Recurring")
+
+        self.recurring_filter_button.setObjectName(
+            "recurring_filter_button"
+        )
+
+        self.recurring_filter_button.setCheckable(True)
+        self.recurring_filter_button.setChecked(False)
+
+        self.recurring_filter_button.setFixedHeight(40)
+        self.recurring_filter_button.setFixedWidth(105)
+
+        self.recurring_filter_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.recurring_filter_button.toggled.connect(
+            self.refresh_transactions
+        )
+
+        filters_row.addWidget(
+            self.recurring_filter_button
+        )
+
+
+        # -----------------------------------------------------
         # Clear
         # -----------------------------------------------------
 
@@ -327,8 +400,13 @@ class TransactionsView(QWidget):
             "clear_filters_button"
         )
 
-        self.clear_filters_button.setFixedHeight(40)
-        self.clear_filters_button.setFixedWidth(82)
+        self.clear_filters_button.setFixedHeight(
+            40
+        )
+
+        self.clear_filters_button.setFixedWidth(
+            82
+        )
 
         self.clear_filters_button.setCursor(
             Qt.CursorShape.PointingHandCursor
@@ -390,7 +468,9 @@ class TransactionsView(QWidget):
 
         income_container.setSpacing(2)
 
-        income_title = QLabel("Income")
+        income_title = QLabel(
+            "Income"
+        )
 
         income_title.setObjectName(
             "summary_label"
@@ -454,7 +534,9 @@ class TransactionsView(QWidget):
 
         expenses_container.setSpacing(2)
 
-        expenses_title = QLabel("Expenses")
+        expenses_title = QLabel(
+            "Expenses"
+        )
 
         expenses_title.setObjectName(
             "summary_label"
@@ -518,7 +600,9 @@ class TransactionsView(QWidget):
 
         net_container.setSpacing(2)
 
-        net_title = QLabel("Net")
+        net_title = QLabel(
+            "Net"
+        )
 
         net_title.setObjectName(
             "summary_label"
@@ -669,11 +753,6 @@ class TransactionsView(QWidget):
                 color: #94A3B8;
             }
 
-            /*
-             * Disable the native Qt/macOS combo arrow.
-             * Only the Octumo custom arrow remains visible.
-             */
-
             QComboBox#modern_combo_box::drop-down,
             QComboBox#transaction_filter_combo::drop-down {
                 width: 0px;
@@ -705,6 +784,33 @@ class TransactionsView(QWidget):
 
             QComboBox#transaction_filter_combo:focus {
                 border-color: #64748B;
+            }
+
+            QPushButton#recurring_filter_button {
+                background-color: #FFFFFF;
+                color: #475569;
+                border: 1px solid #CBD5E1;
+                border-radius: 11px;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 0px 10px;
+            }
+
+            QPushButton#recurring_filter_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+                border-color: #94A3B8;
+            }
+
+            QPushButton#recurring_filter_button:checked {
+                background-color: #17243A;
+                color: #FFFFFF;
+                border-color: #17243A;
+            }
+
+            QPushButton#recurring_filter_button:checked:hover {
+                background-color: #0F172A;
+                border-color: #0F172A;
             }
 
             QPushButton#clear_filters_button {
@@ -805,6 +911,12 @@ class TransactionsView(QWidget):
                 font-weight: 500;
             }
 
+            QLabel#transaction_recurring {
+                color: #64748B;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
             QLabel#transaction_date {
                 color: #64748B;
                 font-size: 13px;
@@ -893,6 +1005,7 @@ class TransactionsView(QWidget):
     # =========================================================
 
     def create_transactions_container(self) -> QWidget:
+
         container = QWidget()
 
         container.setObjectName(
@@ -910,7 +1023,9 @@ class TransactionsView(QWidget):
             8,
         )
 
-        self.transactions_container.setSpacing(10)
+        self.transactions_container.setSpacing(
+            10
+        )
 
         self.transactions_container.setAlignment(
             Qt.AlignmentFlag.AlignTop
@@ -923,11 +1038,14 @@ class TransactionsView(QWidget):
     # =========================================================
 
     def load_filter_data(self) -> None:
+
         # -----------------------------------------------------
         # Accounts
         # -----------------------------------------------------
 
-        self.account_filter.blockSignals(True)
+        self.account_filter.blockSignals(
+            True
+        )
 
         self.account_filter.clear()
 
@@ -939,18 +1057,23 @@ class TransactionsView(QWidget):
         accounts = list_accounts()
 
         for account in accounts:
+
             self.account_filter.addItem(
                 account["name"],
                 account["id"],
             )
 
-        self.account_filter.blockSignals(False)
+        self.account_filter.blockSignals(
+            False
+        )
 
         # -----------------------------------------------------
         # Categories
         # -----------------------------------------------------
 
-        self.category_filter.blockSignals(True)
+        self.category_filter.blockSignals(
+            True
+        )
 
         self.category_filter.clear()
 
@@ -962,18 +1085,51 @@ class TransactionsView(QWidget):
         categories = list_categories()
 
         for category in categories:
+
             self.category_filter.addItem(
                 category["name"],
                 category["id"],
             )
 
-        self.category_filter.blockSignals(False)
+        self.category_filter.blockSignals(
+            False
+        )
 
     # =========================================================
     # Refresh
     # =========================================================
 
     def refresh_transactions(self) -> None:
+
+        # =====================================================
+        # Keep recurring-generated transactions up to date.
+        # =====================================================
+
+        try:
+            generated_count = generate_due_transactions()
+
+            if generated_count > 0:
+                print(
+                    f"[Recurring] Generated "
+                    f"{generated_count} transaction(s)."
+                )
+
+        except Exception as error:
+            print(
+                f"[Recurring ERROR] "
+                f"{type(error).__name__}: {error}"
+            )
+
+        # =====================================================
+        # Reload recurring templates from database.
+        # =====================================================
+
+        self.load_transaction_recurring_data()
+
+        # =====================================================
+        # Normal transactions
+        # =====================================================
+
         self.clear_transactions()
 
         self.all_transactions = list_transactions()
@@ -991,6 +1147,7 @@ class TransactionsView(QWidget):
         )
 
         if not transactions:
+
             empty_label = QLabel(
                 "No transactions match your filters."
             )
@@ -1013,29 +1170,311 @@ class TransactionsView(QWidget):
 
             return
 
-        # No date grouping here.
-        # Every transaction is a compact independent card.
-
         for transaction in transactions:
+
             self.transactions_container.addWidget(
                 self.create_transaction_card(
                     transaction
                 )
             )
 
-    def clear_transactions(self) -> None:
+    # =========================================================
+    # Transaction ↔ Recurring connection
+    # =========================================================
+
+    def load_transaction_recurring_data(
+        self,
+    ) -> None:
+        """
+        Load recurring templates directly from the database.
+
+        Transaction View does not store its own recurring state.
+        Add/Edit Transaction update the recurring table and this
+        view reads that table again when it refreshes.
+        """
+
+        try:
+
+            self.recurring_transactions = (
+                list_recurring_transactions(
+                    include_inactive=True
+                )
+            )
+
+        except Exception:
+
+            self.recurring_transactions = []
+
+    def find_recurring_for_transaction(
+        self,
+        transaction,
+    ):
+        """
+        Find the recurring template belonging to a transaction.
+
+        Match:
+        1. account
+        2. category
+        3. absolute amount
+        4. income/expense kind
+        5. exact start date when possible
+        6. note for the broader fallback match
+
+        Active recurring templates are preferred.
+        """
+
+        if not self.recurring_transactions:
+
+            return None
+
+        transaction_account_id = (
+            transaction["account_id"]
+        )
+
+        transaction_category_id = (
+            transaction["category_id"]
+        )
+
+        transaction_amount_cents = abs(
+            transaction["amount_cents"]
+        )
+
+        transaction_kind = (
+            "income"
+            if transaction["amount_cents"] > 0
+            else "expense"
+        )
+
+        transaction_date = (
+            transaction["transaction_date"]
+        )
+
+        transaction_note = (
+            transaction["note"]
+            or ""
+        )
+
+        # =====================================================
+        # Exact match including start_date
+        # =====================================================
+
+        exact_matches = []
+
+        for recurring in self.recurring_transactions:
+
+            if (
+                recurring["account_id"]
+                != transaction_account_id
+            ):
+                continue
+
+            if (
+                recurring["category_id"]
+                != transaction_category_id
+            ):
+                continue
+
+            if (
+                abs(recurring["amount_cents"])
+                != transaction_amount_cents
+            ):
+                continue
+
+            if (
+                recurring["kind"]
+                != transaction_kind
+            ):
+                continue
+
+            if (
+                recurring["start_date"]
+                != transaction_date
+            ):
+                continue
+
+            exact_matches.append(
+                recurring
+            )
+
+        if exact_matches:
+
+            active_matches = [
+                recurring
+                for recurring in exact_matches
+                if recurring["is_active"]
+            ]
+
+            if active_matches:
+
+                return active_matches[0]
+
+            return exact_matches[0]
+
+        # =====================================================
+        # Broader match
+        #
+        # Generated recurring transactions normally have a
+        # transaction date different from start_date.
+        # =====================================================
+
+        broad_matches = []
+
+        current_transaction_date = (
+            self.parse_transaction_date(
+                transaction_date
+            )
+        )
+
+        for recurring in self.recurring_transactions:
+
+            if (
+                recurring["account_id"]
+                != transaction_account_id
+            ):
+                continue
+
+            if (
+                recurring["category_id"]
+                != transaction_category_id
+            ):
+                continue
+
+            if (
+                abs(recurring["amount_cents"])
+                != transaction_amount_cents
+            ):
+                continue
+
+            if (
+                recurring["kind"]
+                != transaction_kind
+            ):
+                continue
+
+            recurring_note = (
+                recurring["note"]
+                or ""
+            )
+
+            if recurring_note != transaction_note:
+
+                continue
+
+            recurring_start_date = (
+                self.parse_transaction_date(
+                    recurring["start_date"]
+                )
+            )
+
+            if (
+                recurring_start_date is not None
+                and current_transaction_date is not None
+                and recurring_start_date
+                > current_transaction_date
+            ):
+                continue
+
+            broad_matches.append(
+                recurring
+            )
+
+        if not broad_matches:
+
+            return None
+
+        # =====================================================
+        # Prefer active templates.
+        # =====================================================
+
+        active_matches = [
+            recurring
+            for recurring in broad_matches
+            if recurring["is_active"]
+        ]
+
+        candidates = (
+            active_matches
+            if active_matches
+            else broad_matches
+        )
+
+        candidates.sort(
+            key=lambda recurring: (
+                self.parse_transaction_date(
+                    recurring["start_date"]
+                )
+                or date.min
+            ),
+            reverse=True,
+        )
+
+        return candidates[0]
+
+    @staticmethod
+    def format_frequency(
+        frequency: str | None,
+    ) -> str:
+
+        names = {
+            "daily": "Daily",
+            "weekly": "Weekly",
+            "monthly": "Monthly",
+            "yearly": "Yearly",
+        }
+
+        return names.get(
+            frequency,
+            str(frequency or "Unknown"),
+        )
+
+    @staticmethod
+    def format_recurring_date(
+        value: str | None,
+    ) -> str:
+
+        if not value:
+
+            return "—"
+
+        try:
+
+            parsed_date = date.fromisoformat(
+                value
+            )
+
+            return parsed_date.strftime(
+                "%d.%m.%Y"
+            )
+
+        except (
+            ValueError,
+            TypeError,
+        ):
+
+            return str(value)
+
+    def clear_transactions(
+        self,
+    ) -> None:
+
         while self.transactions_container.count():
-            item = self.transactions_container.takeAt(0)
+
+            item = self.transactions_container.takeAt(
+                0
+            )
 
             widget = item.widget()
 
             if widget is not None:
+
                 widget.deleteLater()
 
             else:
+
                 child_layout = item.layout()
 
                 if child_layout is not None:
+
                     self.clear_layout(
                         child_layout
                     )
@@ -1044,17 +1483,23 @@ class TransactionsView(QWidget):
         self,
         layout,
     ) -> None:
+
         while layout.count():
-            item = layout.takeAt(0)
+
+            item = layout.takeAt(
+                0
+            )
 
             widget = item.widget()
 
             if widget is not None:
+
                 widget.deleteLater()
 
             child_layout = item.layout()
 
             if child_layout is not None:
+
                 self.clear_layout(
                     child_layout
                 )
@@ -1067,7 +1512,24 @@ class TransactionsView(QWidget):
         self,
         transactions,
     ):
-        result = list(transactions)
+
+        result = list(
+            transactions
+        )
+
+        # -----------------------------------------------------
+        # Recurring
+        # -----------------------------------------------------
+
+        if self.recurring_filter_button.isChecked():
+            result = [
+                transaction
+                for transaction in result
+                if self.find_recurring_for_transaction(
+                    transaction
+                ) is not None
+            ]
+
 
         # -----------------------------------------------------
         # Account
@@ -1078,6 +1540,7 @@ class TransactionsView(QWidget):
         )
 
         if account_id is not None:
+
             result = [
                 transaction
                 for transaction in result
@@ -1094,6 +1557,7 @@ class TransactionsView(QWidget):
         )
 
         if category_id is not None:
+
             result = [
                 transaction
                 for transaction in result
@@ -1110,6 +1574,7 @@ class TransactionsView(QWidget):
         )
 
         if kind == "income":
+
             result = [
                 transaction
                 for transaction in result
@@ -1117,6 +1582,7 @@ class TransactionsView(QWidget):
             ]
 
         elif kind == "expense":
+
             result = [
                 transaction
                 for transaction in result
@@ -1138,9 +1604,11 @@ class TransactionsView(QWidget):
         )
 
         if start_date is not None:
+
             filtered = []
 
             for transaction in result:
+
                 transaction_date = (
                     self.parse_transaction_date(
                         transaction[
@@ -1150,6 +1618,7 @@ class TransactionsView(QWidget):
                 )
 
                 if transaction_date is None:
+
                     continue
 
                 if (
@@ -1157,6 +1626,7 @@ class TransactionsView(QWidget):
                     <= transaction_date
                     <= end_date
                 ):
+
                     filtered.append(
                         transaction
                     )
@@ -1175,13 +1645,16 @@ class TransactionsView(QWidget):
         )
 
         if search_text:
+
             filtered = []
 
             for transaction in result:
+
                 if self.transaction_matches_search(
                     transaction,
                     search_text,
                 ):
+
                     filtered.append(
                         transaction
                     )
@@ -1271,15 +1744,18 @@ class TransactionsView(QWidget):
         self,
         filter_name: str | None,
     ):
+
         if (
             filter_name == "all"
             or filter_name is None
         ):
+
             return None, None
 
         today = date.today()
 
         if filter_name == "this_month":
+
             start_date = today.replace(
                 day=1
             )
@@ -1289,6 +1765,7 @@ class TransactionsView(QWidget):
             return start_date, end_date
 
         if filter_name == "last_month":
+
             first_this_month = (
                 today.replace(
                     day=1
@@ -1302,7 +1779,9 @@ class TransactionsView(QWidget):
 
             start_date = (
                 last_day_previous_month
-                .replace(day=1)
+                .replace(
+                    day=1
+                )
             )
 
             end_date = (
@@ -1312,6 +1791,7 @@ class TransactionsView(QWidget):
             return start_date, end_date
 
         if filter_name == "last_3_months":
+
             first_this_month = (
                 today.replace(
                     day=1
@@ -1321,18 +1801,23 @@ class TransactionsView(QWidget):
             start_date = (
                 first_this_month
                 - timedelta(days=1)
-            ).replace(day=1)
+            ).replace(
+                day=1
+            )
 
             start_date = (
                 start_date
                 - timedelta(days=1)
-            ).replace(day=1)
+            ).replace(
+                day=1
+            )
 
             end_date = today
 
             return start_date, end_date
 
         if filter_name == "this_year":
+
             start_date = date(
                 today.year,
                 1,
@@ -1349,7 +1834,9 @@ class TransactionsView(QWidget):
     def parse_transaction_date(
         date_value: str,
     ):
+
         try:
+
             year, month, day = (
                 date_value.split("-")
             )
@@ -1364,6 +1851,7 @@ class TransactionsView(QWidget):
             ValueError,
             AttributeError,
         ):
+
             return None
 
     # =========================================================
@@ -1374,10 +1862,12 @@ class TransactionsView(QWidget):
         self,
         transactions,
     ) -> None:
+
         income_cents = 0
         expense_cents = 0
 
         for transaction in transactions:
+
             amount_cents = (
                 transaction[
                     "amount_cents"
@@ -1385,9 +1875,11 @@ class TransactionsView(QWidget):
             )
 
             if amount_cents > 0:
+
                 income_cents += amount_cents
 
             else:
+
                 expense_cents += abs(
                     amount_cents
                 )
@@ -1410,6 +1902,7 @@ class TransactionsView(QWidget):
         )
 
         if net_cents >= 0:
+
             self.net_value.setObjectName(
                 "summary_net_positive"
             )
@@ -1422,6 +1915,7 @@ class TransactionsView(QWidget):
             )
 
         else:
+
             self.net_value.setObjectName(
                 "summary_net_negative"
             )
@@ -1445,10 +1939,13 @@ class TransactionsView(QWidget):
         self,
         count: int,
     ) -> None:
+
         if count == 1:
+
             text = "1 transaction"
 
         else:
+
             text = (
                 f"{count} transactions"
             )
@@ -1604,22 +2101,14 @@ class TransactionsView(QWidget):
             or "Unknown account"
         )
 
-        # -----------------------------------------------------
-        # Secondary information
-        #
-        # Example:
-        # Revolut · Note: Lidl
-        #
-        # Without note:
-        # Revolut
-        # -----------------------------------------------------
-
         if note:
+
             secondary_text = (
                 f"{account_name} · Note: {note}"
             )
 
         else:
+
             secondary_text = account_name
 
         secondary_label = QLabel(
@@ -1641,6 +2130,66 @@ class TransactionsView(QWidget):
         information_layout.addWidget(
             secondary_label
         )
+
+        # =====================================================
+        # Recurring information
+        # =====================================================
+
+        recurring_transaction = (
+            self.find_recurring_for_transaction(
+                transaction
+            )
+        )
+
+        if recurring_transaction is not None:
+
+            frequency_text = (
+                self.format_frequency(
+                    recurring_transaction[
+                        "frequency"
+                    ]
+                )
+            )
+
+            if recurring_transaction[
+                "is_active"
+            ]:
+
+                recurring_text = (
+                    f"↻ {frequency_text} · "
+                    "Next payment: "
+                    f"{self.format_recurring_date(
+                        recurring_transaction[
+                            "next_run_date"
+                        ]
+                    )}"
+                )
+
+            else:
+
+                recurring_text = (
+                    f"↻ {frequency_text} · Paused"
+                )
+
+            recurring_label = QLabel(
+                recurring_text
+            )
+
+            recurring_label.setObjectName(
+                "transaction_recurring"
+            )
+
+            recurring_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.NoTextInteraction
+            )
+
+            recurring_label.setToolTip(
+                recurring_text
+            )
+
+            information_layout.addWidget(
+                recurring_label
+            )
 
         card_layout.addLayout(
             information_layout,
@@ -1821,6 +2370,7 @@ class TransactionsView(QWidget):
         )
 
         if transaction is None:
+
             return
 
         category_name = (
@@ -1848,6 +2398,7 @@ class TransactionsView(QWidget):
         )
 
         if amount_cents >= 0:
+
             amount_text = (
                 "+"
                 + self.format_amount(
@@ -1856,6 +2407,7 @@ class TransactionsView(QWidget):
             )
 
         else:
+
             amount_text = (
                 "-"
                 + self.format_amount(
@@ -1876,7 +2428,6 @@ class TransactionsView(QWidget):
             cancel_text="",
         )
 
-        # Only Close button is needed.
         modal.cancel_button.hide()
 
         # -----------------------------------------------------
@@ -1888,6 +2439,7 @@ class TransactionsView(QWidget):
         )
 
         if amount_cents >= 0:
+
             amount_label.setStyleSheet(
                 """
                 color: #15803D;
@@ -1897,6 +2449,7 @@ class TransactionsView(QWidget):
             )
 
         else:
+
             amount_label.setStyleSheet(
                 """
                 color: #B91C1C;
@@ -1952,7 +2505,9 @@ class TransactionsView(QWidget):
             14,
         )
 
-        details_layout.setSpacing(11)
+        details_layout.setSpacing(
+            11
+        )
 
         self.add_detail_row(
             details_layout,
@@ -1978,12 +2533,60 @@ class TransactionsView(QWidget):
             note,
         )
 
+        # =====================================================
+        # Recurring information
+        # =====================================================
+
+        recurring_transaction = (
+            self.find_recurring_for_transaction(
+                transaction
+            )
+        )
+
+        if recurring_transaction is None:
+
+            self.add_detail_row(
+                details_layout,
+                "Recurring",
+                "No",
+            )
+
+        else:
+
+            frequency_text = (
+                self.format_frequency(
+                    recurring_transaction[
+                        "frequency"
+                    ]
+                )
+            )
+
+            self.add_detail_row(
+                details_layout,
+                "Recurring",
+                f"Yes · {frequency_text}",
+            )
+
+            self.add_detail_row(
+                details_layout,
+                "Next payment",
+                (
+                    self.format_recurring_date(
+                        recurring_transaction[
+                            "next_run_date"
+                        ]
+                    )
+                    if recurring_transaction[
+                        "is_active"
+                    ]
+                    else "Paused"
+                ),
+            )
+
         modal.add_content(
             details_frame
         )
 
-        # Modal's own signals are used here.
-        # Modal does not have close_modal().
         modal.submitted.connect(
             self.close_nested_modal
         )
@@ -2030,7 +2633,9 @@ class TransactionsView(QWidget):
             "detail_value"
         )
 
-        value.setWordWrap(True)
+        value.setWordWrap(
+            True
+        )
 
         row.addWidget(
             label
@@ -2074,12 +2679,14 @@ class TransactionsView(QWidget):
     ) -> None:
 
         try:
+
             dialog = EditTransactionDialog(
                 transaction_id=transaction_id,
                 parent=self.window(),
             )
 
         except ValueError:
+
             return
 
         dialog.finished.connect(
@@ -2167,12 +2774,15 @@ class TransactionsView(QWidget):
     ) -> None:
 
         try:
+
             delete_transaction(
                 transaction_id
             )
 
         except Exception:
+
             self.close_nested_modal()
+
             return
 
         self.window().close_modal()
@@ -2206,22 +2816,11 @@ class TransactionsView(QWidget):
     ) -> None:
 
         self.search_input.clear()
-
-        self.account_filter.setCurrentIndex(
-            0
-        )
-
-        self.category_filter.setCurrentIndex(
-            0
-        )
-
-        self.type_filter.setCurrentIndex(
-            0
-        )
-
-        self.date_filter.setCurrentIndex(
-            0
-        )
+        self.account_filter.setCurrentIndex(0)
+        self.category_filter.setCurrentIndex(0)
+        self.type_filter.setCurrentIndex(0)
+        self.date_filter.setCurrentIndex(0)
+        self.recurring_filter_button.setChecked(False)
 
         self.refresh_transactions()
 
@@ -2247,6 +2846,7 @@ class TransactionsView(QWidget):
     ) -> str:
 
         try:
+
             year, month, day = (
                 date_value.split("-")
             )
@@ -2259,6 +2859,7 @@ class TransactionsView(QWidget):
             ValueError,
             AttributeError,
         ):
+
             return date_value
 
     # =========================================================
