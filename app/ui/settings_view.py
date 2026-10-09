@@ -1,15 +1,468 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
+    QFileDialog,
     QLabel,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
     QWidget,
 )
 
+from app.services.backup_service import (
+    export_database,
+    restore_database,
+)
+
+from app.services.user_settings_service import (
+    get_date_format,
+    get_first_day_of_week,
+    get_user_name,
+    update_date_format,
+    update_first_day_of_week,
+    update_user_name,
+)
+
 from app.ui.edit_profile_modal import EditProfileModal
+from app.ui.modal import Modal
+from app.ui.setting_row import SettingRow
+from app.ui.settings_option_modal import SettingsOptionModal
+
+
+# =========================================================
+# Settings Action Row
+# =========================================================
+
+
+class SettingsActionRow(QWidget):
+
+    clicked = Signal()
+
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        parent=None,
+    ) -> None:
+
+        super().__init__(parent)
+
+        self.setObjectName(
+            "settings_action_row"
+        )
+
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        layout = QHBoxLayout(
+            self
+        )
+
+        layout.setContentsMargins(
+            14,
+            11,
+            14,
+            11,
+        )
+
+        layout.setSpacing(
+            0
+        )
+
+        text_layout = QVBoxLayout()
+
+        text_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        text_layout.setSpacing(
+            3
+        )
+
+        title_label = QLabel(
+            title
+        )
+
+        title_label.setObjectName(
+            "data_row_title"
+        )
+
+        description_label = QLabel(
+            description
+        )
+
+        description_label.setObjectName(
+            "data_row_description"
+        )
+
+        text_layout.addWidget(
+            title_label
+        )
+
+        text_layout.addWidget(
+            description_label
+        )
+
+        layout.addLayout(
+            text_layout
+        )
+
+        layout.addStretch()
+
+        arrow = QLabel(
+            "›"
+        )
+
+        arrow.setObjectName(
+            "setting_arrow"
+        )
+
+        arrow.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        arrow.setFixedWidth(
+            28
+        )
+
+        layout.addWidget(
+            arrow
+        )
+
+    def mousePressEvent(
+        self,
+        event,
+    ) -> None:
+
+        if (
+            event.button()
+            == Qt.MouseButton.LeftButton
+        ):
+            self.clicked.emit()
+
+        super().mousePressEvent(
+            event
+        )
+
+
+# =========================================================
+# Backup Action Card
+# =========================================================
+
+
+class BackupActionCard(QFrame):
+
+    clicked = Signal()
+
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        primary: bool = False,
+        parent=None,
+    ) -> None:
+
+        super().__init__(parent)
+
+        self.setObjectName(
+            "backup_action_card"
+        )
+
+        self.primary = primary
+
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.setFixedHeight(
+            62
+        )
+
+        layout = QHBoxLayout(
+            self
+        )
+
+        layout.setContentsMargins(
+            16,
+            0,
+            16,
+            0,
+        )
+
+        layout.setSpacing(
+            12
+        )
+
+        text_layout = QVBoxLayout()
+
+        text_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        text_layout.setSpacing(
+            2
+        )
+
+        title_label = QLabel(
+            title
+        )
+
+        title_label.setObjectName(
+            "backup_action_title"
+        )
+
+        description_label = QLabel(
+            description
+        )
+
+        description_label.setObjectName(
+            "backup_action_description"
+        )
+
+        text_layout.addWidget(
+            title_label
+        )
+
+        text_layout.addWidget(
+            description_label
+        )
+
+        layout.addLayout(
+            text_layout
+        )
+
+        layout.addStretch()
+
+        arrow = QLabel(
+            "›"
+        )
+
+        arrow.setObjectName(
+            "backup_action_arrow"
+        )
+
+        arrow.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        arrow.setFixedWidth(
+            24
+        )
+
+        layout.addWidget(
+            arrow
+        )
+
+        self.update_style()
+
+    def update_style(
+        self,
+    ) -> None:
+
+        if self.primary:
+
+            self.setStyleSheet(
+                """
+                QFrame#backup_action_card {
+                    background-color: #F8FAFC;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 10px;
+                }
+
+                QFrame#backup_action_card:hover {
+                    background-color: #F1F5F9;
+                    border-color: #94A3B8;
+                }
+
+                QLabel#backup_action_title {
+                    background-color: transparent;
+                    color: #0F172A;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+
+                QLabel#backup_action_description {
+                    background-color: transparent;
+                    color: #64748B;
+                    font-size: 12px;
+                }
+
+                QLabel#backup_action_arrow {
+                    background-color: transparent;
+                    color: #64748B;
+                    font-size: 24px;
+                }
+                """
+            )
+
+        else:
+
+            self.setStyleSheet(
+                """
+                QFrame#backup_action_card {
+                    background-color: #FFFFFF;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 10px;
+                }
+
+                QFrame#backup_action_card:hover {
+                    background-color: #F8FAFC;
+                    border-color: #CBD5E1;
+                }
+
+                QLabel#backup_action_title {
+                    background-color: transparent;
+                    color: #0F172A;
+                    font-size: 14px;
+                    font-weight: 600;
+                }
+
+                QLabel#backup_action_description {
+                    background-color: transparent;
+                    color: #64748B;
+                    font-size: 12px;
+                }
+
+                QLabel#backup_action_arrow {
+                    background-color: transparent;
+                    color: #94A3B8;
+                    font-size: 24px;
+                }
+                """
+            )
+
+    def mousePressEvent(
+        self,
+        event,
+    ) -> None:
+
+        if (
+            event.button()
+            == Qt.MouseButton.LeftButton
+        ):
+            self.clicked.emit()
+
+        super().mousePressEvent(
+            event
+        )
+
+
+# =========================================================
+# Backup & Restore Modal
+# =========================================================
+
+
+class BackupRestoreModal(Modal):
+
+    create_backup_requested = Signal()
+    restore_requested = Signal()
+
+    def __init__(
+        self,
+        parent=None,
+    ) -> None:
+
+        super().__init__(
+            title="Backup & restore",
+            subtitle=(
+                "Protect your Octumo data or restore "
+                "an existing backup."
+            ),
+            primary_text="Close",
+            cancel_text="Cancel",
+            parent=parent,
+        )
+
+        self.primary_button.hide()
+
+        actions_container = QWidget()
+
+        actions_layout = QVBoxLayout(
+            actions_container
+        )
+
+        actions_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        actions_layout.setSpacing(
+            10
+        )
+
+        create_card = BackupActionCard(
+            title="Create backup",
+            description=(
+                "Save a complete copy of your Octumo data."
+            ),
+            primary=True,
+        )
+
+        create_card.clicked.connect(
+            self.request_create_backup
+        )
+
+        actions_layout.addWidget(
+            create_card
+        )
+
+        restore_card = BackupActionCard(
+            title="Restore backup",
+            description=(
+                "Replace your current data with a backup."
+            ),
+            primary=False,
+        )
+
+        restore_card.clicked.connect(
+            self.request_restore
+        )
+
+        actions_layout.addWidget(
+            restore_card
+        )
+
+        self.add_content(
+            actions_container
+        )
+
+    def request_create_backup(
+        self,
+    ) -> None:
+
+        self.create_backup_requested.emit()
+
+    def request_restore(
+        self,
+    ) -> None:
+
+        self.restore_requested.emit()
+
+
+# =========================================================
+# Settings View
+# =========================================================
 
 
 class SettingsView(QWidget):
@@ -23,21 +476,280 @@ class SettingsView(QWidget):
             parent
         )
 
-        self.user_name = "Samuel"
+        self.setObjectName(
+            "settings_view"
+        )
+
+        self.user_name = get_user_name()
+
+        self.date_format = get_date_format()
+
+        self.first_day_of_week = (
+            get_first_day_of_week()
+        )
 
         self.build_ui()
 
+        self.setStyleSheet(
+            """
+            /* =================================================
+               MAIN
+               ================================================= */
+
+            QWidget#settings_view {
+                background-color: #F8FAFC;
+            }
+
+            QWidget#settings_scroll_content {
+                background-color: #F8FAFC;
+            }
+
+
+            /* =================================================
+               HEADER
+               ================================================= */
+
+            QLabel#page_title {
+                background-color: transparent;
+                color: #0F172A;
+                font-size: 28px;
+                font-weight: 700;
+            }
+
+            QLabel#page_subtitle {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 15px;
+            }
+
+
+            /* =================================================
+               SECTION TITLES
+               ================================================= */
+
+            QLabel#settings_section_title {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+
+            /* =================================================
+               OUTER SETTINGS BUBBLES
+               ================================================= */
+
+            QFrame#settings_card {
+                background-color: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+            }
+
+
+            /* =================================================
+               PROFILE
+               ================================================= */
+
+            QLabel#profile_avatar {
+                background-color: #EFF6FF;
+                color: #17243A;
+                border: none;
+                border-radius: 28px;
+                font-size: 22px;
+                font-weight: 700;
+            }
+
+            QLabel#profile_name {
+                background-color: transparent;
+                color: #0F172A;
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            QLabel#profile_type {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 14px;
+            }
+
+
+            /* =================================================
+               EDIT PROFILE BUTTON
+               ================================================= */
+
+            QPushButton#edit_profile_button {
+                background-color: #FFFFFF;
+                color: #334155;
+                border: 1px solid #CBD5E1;
+                border-radius: 9px;
+                font-size: 14px;
+                font-weight: 600;
+                padding: 0 16px;
+            }
+
+            QPushButton#edit_profile_button:hover {
+                background-color: #F8FAFC;
+                color: #0F172A;
+                border-color: #94A3B8;
+            }
+
+            QPushButton#edit_profile_button:pressed {
+                background-color: #F1F5F9;
+            }
+
+
+            /* =================================================
+               NESTED SETTING BUBBLES
+               ================================================= */
+
+            QWidget#setting_row {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+            }
+
+            QWidget#setting_row:hover {
+                background-color: #F1F5F9;
+                border: 1px solid #CBD5E1;
+                border-radius: 10px;
+            }
+
+            /* Currency - no hover effect */
+
+            QWidget#currency_setting_row {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+            }
+
+            QWidget#currency_setting_row:hover {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+            }
+
+            QLabel#setting_name {
+                background-color: transparent;
+                color: #0F172A;
+                font-size: 15px;
+                font-weight: 600;
+            }
+
+            QLabel#setting_value {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 14px;
+            }
+
+            QLabel#setting_arrow {
+                background-color: transparent;
+                color: #94A3B8;
+                font-size: 27px;
+                font-weight: 400;
+            }
+
+
+            /* =================================================
+               DATA ACTION BUBBLES
+               ================================================= */
+
+            QWidget#settings_action_row {
+                background-color: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+            }
+
+            QWidget#settings_action_row:hover {
+                background-color: #F1F5F9;
+                border: 1px solid #CBD5E1;
+                border-radius: 10px;
+            }
+
+            QLabel#data_row_title {
+                background-color: transparent;
+                color: #0F172A;
+                font-size: 15px;
+                font-weight: 600;
+            }
+
+            QLabel#data_row_description {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 14px;
+            }
+
+
+            /* =================================================
+               ABOUT
+               ================================================= */
+
+            QLabel#about_title {
+                background-color: transparent;
+                color: #0F172A;
+                font-size: 16px;
+                font-weight: 700;
+            }
+
+            QLabel#about_version {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 14px;
+            }
+
+            QLabel#about_description {
+                background-color: transparent;
+                color: #64748B;
+                font-size: 14px;
+            }
+
+
+            /* =================================================
+               SCROLLBAR
+               ================================================= */
+
+            QScrollBar:vertical {
+                background: transparent;
+                width: 8px;
+                margin: 0;
+                border: none;
+            }
+
+            QScrollBar::handle:vertical {
+                background: #CBD5E1;
+                border-radius: 4px;
+                min-height: 40px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
+                border: none;
+                background: transparent;
+            }
+
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
+            """
+        )
+
     # =====================================================
-    # UI
+    # Build UI
     # =====================================================
 
-    def build_ui(self) -> None:
+    def build_ui(
+        self,
+    ) -> None:
 
         layout = QVBoxLayout(
             self
         )
 
-        # EXACTLY LIKE CATEGORIES VIEW
         layout.setContentsMargins(
             44,
             36,
@@ -88,7 +800,7 @@ class SettingsView(QWidget):
         )
 
         subtitle = QLabel(
-            "Manage your profile and application preferences."
+            "Manage your profile, preferences and data."
         )
 
         subtitle.setObjectName(
@@ -113,431 +825,153 @@ class SettingsView(QWidget):
             header_layout
         )
 
-        # EXACTLY LIKE CATEGORIES VIEW
         layout.addSpacing(
-            34
+            28
         )
 
         # =================================================
-        # Scroll area
+        # Scroll
         # =================================================
 
-        self.settings_scroll = QScrollArea()
+        scroll = QScrollArea()
 
-        self.settings_scroll.setObjectName(
+        scroll.setObjectName(
             "settings_scroll"
         )
 
-        self.settings_scroll.setWidgetResizable(
+        scroll.setWidgetResizable(
             True
         )
 
-        self.settings_scroll.setFrameShape(
+        scroll.setFrameShape(
             QFrame.Shape.NoFrame
         )
 
-        self.settings_scroll.setHorizontalScrollBarPolicy(
+        scroll.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
-        self.settings_scroll.setVerticalScrollBarPolicy(
+        scroll.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
 
-        self.settings_scroll.setWidget(
-            self.create_settings_container()
+        scroll.viewport().setObjectName(
+            "settings_scroll_viewport"
         )
 
-        layout.addWidget(
-            self.settings_scroll,
-            1,
-        )
-
-        # =================================================
-        # Styling
-        # =================================================
-
-        self.setStyleSheet(
+        scroll.viewport().setStyleSheet(
             """
-            /* =================================================
-               Page
-               ================================================= */
-
-
-            QLabel#page_title {
-                color: #0F172A;
-                font-size: 28px;
-                font-weight: 700;
-            }
-
-            QLabel#page_subtitle {
-                color: #64748B;
-                font-size: 15px;
-            }
-
-            /* =================================================
-               Scroll area
-               ================================================= */
-
-            QScrollArea#settings_scroll {
-                background-color: transparent;
-                border: none;
-            }
-
-            QWidget#settings_scroll_content {
-                background-color: transparent;
-            }
-
-            /* =================================================
-               Section title
-               ================================================= */
-
-            QLabel#section_title {
-                color: #64748B;
-                font-size: 13px;
-                font-weight: 700;
-            }
-
-            /* =================================================
-               Cards
-               ================================================= */
-
-            QFrame#settings_card {
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
-            }
-
-            /* =================================================
-               Profile
-               ================================================= */
-
-            QLabel#profile_avatar {
-                background-color: #0F172A;
-                color: #FFFFFF;
-                border-radius: 24px;
-                font-size: 18px;
-                font-weight: 700;
-            }
-
-            QLabel#profile_name {
-                color: #0F172A;
-                font-size: 16px;
-                font-weight: 600;
-            }
-
-            QLabel#profile_type {
-                color: #64748B;
-                font-size: 13px;
-            }
-
-            QPushButton#edit_profile_button {
-                background-color: #FFFFFF;
-                color: #475569;
-                border: 1px solid #CBD5E1;
-                border-radius: 8px;
-                padding: 0 14px;
-                font-size: 14px;
-                font-weight: 600;
-            }
-
-            QPushButton#edit_profile_button:hover {
+            QWidget#settings_scroll_viewport {
                 background-color: #F8FAFC;
-                color: #0F172A;
-                border-color: #94A3B8;
-            }
-
-            QPushButton#edit_profile_button:pressed {
-                background-color: #F1F5F9;
-            }
-
-            /* =================================================
-               Settings rows
-               ================================================= */
-
-            QLabel#setting_name {
-                color: #0F172A;
-                font-size: 14px;
-                font-weight: 600;
-            }
-
-            QLabel#setting_value {
-                color: #64748B;
-                font-size: 13px;
-            }
-
-            QLabel#setting_arrow {
-                color: #94A3B8;
-                font-size: 24px;
-                font-weight: 400;
-            }
-
-            /* =================================================
-               Divider
-               ================================================= */
-
-            QFrame#settings_divider {
-                background-color: #E2E8F0;
                 border: none;
-                min-height: 1px;
-                max-height: 1px;
-            }
-
-            /* =================================================
-               About
-               ================================================= */
-
-            QLabel#about_name {
-                color: #0F172A;
-                font-size: 15px;
-                font-weight: 600;
-            }
-
-            QLabel#about_description {
-                color: #64748B;
-                font-size: 13px;
-            }
-
-            QLabel#about_version {
-                color: #94A3B8;
-                font-size: 13px;
-                font-weight: 500;
-            }
-
-            /* =================================================
-               Scrollbar
-               ================================================= */
-
-            QScrollBar:vertical {
-                width: 8px;
-                background: transparent;
-                margin: 2px 0 2px 0;
-            }
-
-            QScrollBar::handle:vertical {
-                background: #CBD5E1;
-                border-radius: 4px;
-                min-height: 32px;
-            }
-
-            QScrollBar::handle:vertical:hover {
-                background: #94A3B8;
-            }
-
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical {
-                background: transparent;
             }
             """
         )
 
-    # =====================================================
-    # Settings container
-    # =====================================================
+        # =================================================
+        # Content
+        # =================================================
 
-    def create_settings_container(self) -> QWidget:
+        content = QWidget()
 
-        container = QWidget()
-
-        container.setObjectName(
+        content.setObjectName(
             "settings_scroll_content"
         )
 
-        self.settings_layout = QVBoxLayout(
-            container
+        content_layout = QVBoxLayout(
+            content
         )
 
-        self.settings_layout.setContentsMargins(
+        content_layout.setContentsMargins(
             0,
             0,
             8,
             0,
         )
 
-        self.settings_layout.setSpacing(
+        content_layout.setSpacing(
             0
         )
 
-        self.settings_layout.setAlignment(
-            Qt.AlignmentFlag.AlignTop
-        )
-
         # =================================================
-        # My Profile
+        # MY PROFILE
         # =================================================
 
-        profile_section = QLabel(
-            "My Profile"
+        content_layout.addWidget(
+            self.section_title(
+                "MY PROFILE"
+            )
         )
 
-        profile_section.setObjectName(
-            "section_title"
+        content_layout.addSpacing(
+            8
         )
 
-        self.settings_layout.addWidget(
-            profile_section
-        )
+        profile_card = QFrame()
 
-        self.settings_layout.addSpacing(
-            10
-        )
-
-        self.settings_layout.addWidget(
-            self.create_profile_card()
-        )
-
-        self.settings_layout.addSpacing(
-            28
-        )
-
-        # =================================================
-        # Preferences
-        # =================================================
-
-        preferences_section = QLabel(
-            "Preferences"
-        )
-
-        preferences_section.setObjectName(
-            "section_title"
-        )
-
-        self.settings_layout.addWidget(
-            preferences_section
-        )
-
-        self.settings_layout.addSpacing(
-            10
-        )
-
-        self.settings_layout.addWidget(
-            self.create_preferences_card()
-        )
-
-        self.settings_layout.addSpacing(
-            28
-        )
-
-        # =================================================
-        # About
-        # =================================================
-
-        about_section = QLabel(
-            "About"
-        )
-
-        about_section.setObjectName(
-            "section_title"
-        )
-
-        self.settings_layout.addWidget(
-            about_section
-        )
-
-        self.settings_layout.addSpacing(
-            10
-        )
-
-        self.settings_layout.addWidget(
-            self.create_about_card()
-        )
-
-        self.settings_layout.addStretch()
-
-        return container
-
-    # =====================================================
-    # Profile card
-    # =====================================================
-
-    def create_profile_card(self) -> QFrame:
-
-        card = QFrame()
-
-        card.setObjectName(
+        profile_card.setObjectName(
             "settings_card"
         )
 
-        layout = QVBoxLayout(
-            card
+        profile_card.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
         )
 
-        layout.setContentsMargins(
-            24,
-            20,
-            24,
-            20,
+        profile_layout = QHBoxLayout(
+            profile_card
         )
 
-        layout.setSpacing(
-            0
+        profile_layout.setContentsMargins(
+            28,
+            18,
+            28,
+            18,
         )
 
-        # -------------------------------------------------
-        # Main profile row
-        # -------------------------------------------------
-
-        row = QHBoxLayout()
-
-        row.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
+        profile_layout.setSpacing(
+            18
         )
 
-        row.setSpacing(
-            14
+        self.profile_avatar = QLabel(
+            self.get_avatar_letter()
         )
 
-        # Avatar
-
-        self.avatar = QLabel(
-            self.get_initial()
-        )
-
-        self.avatar.setObjectName(
+        self.profile_avatar.setObjectName(
             "profile_avatar"
         )
 
-        self.avatar.setAlignment(
+        self.profile_avatar.setAlignment(
             Qt.AlignmentFlag.AlignCenter
         )
 
-        self.avatar.setFixedSize(
-            48,
-            48,
+        self.profile_avatar.setFixedSize(
+            56,
+            56,
         )
 
-        row.addWidget(
-            self.avatar
+        profile_layout.addWidget(
+            self.profile_avatar
         )
 
-        # Name
+        profile_info = QVBoxLayout()
 
-        info_layout = QVBoxLayout()
-
-        info_layout.setContentsMargins(
+        profile_info.setContentsMargins(
             0,
             0,
             0,
             0,
         )
 
-        info_layout.setSpacing(
+        profile_info.setSpacing(
             3
         )
 
-        self.profile_name = QLabel(
+        self.profile_name_label = QLabel(
             self.user_name
         )
 
-        self.profile_name.setObjectName(
+        self.profile_name_label.setObjectName(
             "profile_name"
         )
 
@@ -549,21 +983,23 @@ class SettingsView(QWidget):
             "profile_type"
         )
 
-        info_layout.addWidget(
-            self.profile_name
+        profile_info.addStretch()
+
+        profile_info.addWidget(
+            self.profile_name_label
         )
 
-        info_layout.addWidget(
+        profile_info.addWidget(
             profile_type
         )
 
-        row.addLayout(
-            info_layout
+        profile_info.addStretch()
+
+        profile_layout.addLayout(
+            profile_info
         )
 
-        row.addStretch()
-
-        # Edit button
+        profile_layout.addStretch()
 
         edit_button = QPushButton(
             "Edit profile"
@@ -574,7 +1010,7 @@ class SettingsView(QWidget):
         )
 
         edit_button.setFixedHeight(
-            38
+            42
         )
 
         edit_button.setCursor(
@@ -585,356 +1021,801 @@ class SettingsView(QWidget):
             self.open_edit_profile
         )
 
-        row.addWidget(
+        profile_layout.addWidget(
             edit_button
         )
 
-        layout.addLayout(
-            row
+        content_layout.addWidget(
+            profile_card
         )
 
-        return card
+        content_layout.addSpacing(
+            22
+        )
 
-    # =====================================================
-    # Preferences card
-    # =====================================================
+        # =================================================
+        # PREFERENCES
+        # =================================================
 
-    def create_preferences_card(self) -> QFrame:
+        content_layout.addWidget(
+            self.section_title(
+                "PREFERENCES"
+            )
+        )
 
-        card = QFrame()
+        content_layout.addSpacing(
+            8
+        )
 
-        card.setObjectName(
+        preferences_card = QFrame()
+
+        preferences_card.setObjectName(
             "settings_card"
         )
 
-        layout = QVBoxLayout(
-            card
+        preferences_card.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
         )
 
-        layout.setContentsMargins(
-            24,
-            4,
-            24,
-            4,
+        preferences_layout = QVBoxLayout(
+            preferences_card
         )
 
-        layout.setSpacing(
-            0
+        preferences_layout.setContentsMargins(
+            10,
+            10,
+            10,
+            10,
         )
 
-        layout.addLayout(
-            self.create_setting_row(
-                "Currency",
-                "EUR (€)",
+        preferences_layout.setSpacing(
+            8
+        )
+
+        # Currency
+
+        currency_row = SettingRow(
+            title="Currency",
+            value="EUR (€)",
+            clickable=False,
+        )
+
+        currency_row.setObjectName(
+            "currency_setting_row"
+        )
+
+        currency_row.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        preferences_layout.addWidget(
+            currency_row
+        )
+
+        # Date format
+
+        self.date_format_row = SettingRow(
+            title="Date format",
+            value=self.date_format,
+            clickable=True,
+        )
+
+        self.date_format_row.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        self.date_format_row.clicked.connect(
+            self.open_date_format
+        )
+
+        preferences_layout.addWidget(
+            self.date_format_row
+        )
+
+        # First day
+
+        self.first_day_row = SettingRow(
+            title="First day of week",
+            value=self.first_day_of_week,
+            clickable=True,
+        )
+
+        self.first_day_row.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        self.first_day_row.clicked.connect(
+            self.open_first_day_of_week
+        )
+
+        preferences_layout.addWidget(
+            self.first_day_row
+        )
+
+        content_layout.addWidget(
+            preferences_card
+        )
+
+        content_layout.addSpacing(
+            22
+        )
+
+        # =================================================
+        # DATA & PRIVACY
+        # =================================================
+
+        content_layout.addWidget(
+            self.section_title(
+                "DATA & PRIVACY"
             )
         )
 
-        layout.addWidget(
-            self.create_divider()
+        content_layout.addSpacing(
+            8
         )
 
-        layout.addLayout(
-            self.create_setting_row(
-                "Date format",
-                "DD.MM.YYYY",
-            )
-        )
+        data_card = QFrame()
 
-        layout.addWidget(
-            self.create_divider()
-        )
-
-        layout.addLayout(
-            self.create_setting_row(
-                "First day of week",
-                "Monday",
-            )
-        )
-
-        return card
-
-    # =====================================================
-    # About card
-    # =====================================================
-
-    def create_about_card(self) -> QFrame:
-
-        card = QFrame()
-
-        card.setObjectName(
+        data_card.setObjectName(
             "settings_card"
         )
 
-        layout = QVBoxLayout(
-            card
+        data_card.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
         )
 
-        layout.setContentsMargins(
-            24,
+        data_layout = QVBoxLayout(
+            data_card
+        )
+
+        data_layout.setContentsMargins(
+            10,
+            10,
+            10,
+            10,
+        )
+
+        data_layout.setSpacing(
+            8
+        )
+
+        export_row = SettingsActionRow(
+            title="Export data",
+            description="Export your financial data",
+        )
+
+        export_row.clicked.connect(
+            self.export_data
+        )
+
+        data_layout.addWidget(
+            export_row
+        )
+
+        backup_row = SettingsActionRow(
+            title="Backup & restore",
+            description="Create a backup or restore your data",
+        )
+
+        backup_row.clicked.connect(
+            self.backup_and_restore
+        )
+
+        data_layout.addWidget(
+            backup_row
+        )
+
+        content_layout.addWidget(
+            data_card
+        )
+
+        content_layout.addSpacing(
+            22
+        )
+
+        # =================================================
+        # ABOUT
+        # =================================================
+
+        content_layout.addWidget(
+            self.section_title(
+                "ABOUT"
+            )
+        )
+
+        content_layout.addSpacing(
+            8
+        )
+
+        about_card = QFrame()
+
+        about_card.setObjectName(
+            "settings_card"
+        )
+
+        about_card.setAttribute(
+            Qt.WidgetAttribute.WA_StyledBackground,
+            True,
+        )
+
+        about_layout = QVBoxLayout(
+            about_card
+        )
+
+        about_layout.setContentsMargins(
+            28,
             20,
-            24,
+            28,
             20,
         )
 
-        layout.setSpacing(
-            0
-        )
-
-        row = QHBoxLayout()
-
-        row.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
-        )
-
-        info_layout = QVBoxLayout()
-
-        info_layout.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
-        )
-
-        info_layout.setSpacing(
+        about_layout.setSpacing(
             4
         )
 
-        app_name = QLabel(
+        about_title = QLabel(
             "Octumo Money Tracker"
         )
 
-        app_name.setObjectName(
-            "about_name"
+        about_title.setObjectName(
+            "about_title"
         )
 
-        description = QLabel(
-            "Personal finance management made simple."
+        about_version = QLabel(
+            "Version 1.0.0"
         )
 
-        description.setObjectName(
-            "about_description"
-        )
-
-        info_layout.addWidget(
-            app_name
-        )
-
-        info_layout.addWidget(
-            description
-        )
-
-        row.addLayout(
-            info_layout
-        )
-
-        row.addStretch()
-
-        version = QLabel(
-            "v1.0.0"
-        )
-
-        version.setObjectName(
+        about_version.setObjectName(
             "about_version"
         )
 
-        row.addWidget(
-            version
+        about_description = QLabel(
+            "Personal finance management made simple."
         )
 
-        layout.addLayout(
-            row
+        about_description.setObjectName(
+            "about_description"
         )
 
-        return card
+        about_layout.addWidget(
+            about_title
+        )
+
+        about_layout.addWidget(
+            about_version
+        )
+
+        about_layout.addSpacing(
+            6
+        )
+
+        about_layout.addWidget(
+            about_description
+        )
+
+        content_layout.addWidget(
+            about_card
+        )
+
+        content_layout.addSpacing(
+            26
+        )
+
+        content_layout.addStretch()
+
+        scroll.setWidget(
+            content
+        )
+
+        layout.addWidget(
+            scroll
+        )
 
     # =====================================================
-    # Setting row
+    # Section title
     # =====================================================
 
-    def create_setting_row(
+    def section_title(
         self,
-        title: str,
-        value: str,
-    ) -> QHBoxLayout:
+        text: str,
+    ) -> QLabel:
 
-        row = QHBoxLayout()
-
-        row.setContentsMargins(
-            0,
-            14,
-            0,
-            14,
+        label = QLabel(
+            text
         )
 
-        row.setSpacing(
-            0
+        label.setObjectName(
+            "settings_section_title"
         )
 
-        info_layout = QVBoxLayout()
-
-        info_layout.setContentsMargins(
-            0,
-            0,
-            0,
-            0,
-        )
-
-        info_layout.setSpacing(
-            2
-        )
-
-        title_label = QLabel(
-            title
-        )
-
-        title_label.setObjectName(
-            "setting_name"
-        )
-
-        value_label = QLabel(
-            value
-        )
-
-        value_label.setObjectName(
-            "setting_value"
-        )
-
-        info_layout.addWidget(
-            title_label
-        )
-
-        info_layout.addWidget(
-            value_label
-        )
-
-        row.addLayout(
-            info_layout
-        )
-
-        row.addStretch()
-
-        arrow = QLabel(
-            "›"
-        )
-
-        arrow.setObjectName(
-            "setting_arrow"
-        )
-
-        row.addWidget(
-            arrow
-        )
-
-        return row
+        return label
 
     # =====================================================
-    # Divider
+    # Avatar
     # =====================================================
 
-    def create_divider(self) -> QFrame:
+    def get_avatar_letter(
+        self,
+    ) -> str:
 
-        divider = QFrame()
+        name = self.user_name.strip()
 
-        divider.setFrameShape(
-            QFrame.Shape.HLine
-        )
+        if not name:
+            return "U"
 
-        divider.setObjectName(
-            "settings_divider"
-        )
-
-        return divider
+        return name[0].upper()
 
     # =====================================================
     # Edit profile
     # =====================================================
 
-    def open_edit_profile(self) -> None:
-
-        from PySide6.QtWidgets import QApplication
-
-        main_window = QApplication.activeWindow()
+    def open_edit_profile(
+        self,
+    ) -> None:
 
         modal = EditProfileModal(
             current_name=self.user_name,
-            parent=main_window,
+            parent=self,
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.save_profile(modal)
         )
 
         modal.cancelled.connect(
-            lambda: self.close_profile_modal(
-                modal
-            )
+            self.close_current_modal
         )
 
-        main_window.show_modal(
+        self.window().show_modal(
             modal
         )
 
-        # Store reference so we can access it
-        self._edit_profile_modal = modal
-
-    # =====================================================
-    # Close profile modal
-    # =====================================================
-
-    def close_profile_modal(
+    def save_profile(
         self,
-        modal,
+        modal: EditProfileModal,
     ) -> None:
 
-        from PySide6.QtWidgets import QApplication
+        name = (
+            modal.name_input
+            .text()
+            .strip()
+        )
 
-        # If a valid name was entered,
-        # update the Settings profile.
+        if not name:
 
-        if hasattr(
-            modal,
-            "current_name",
-        ):
+            modal.name_input.setFocus()
 
-            if modal.current_name:
+            return
 
-                self.user_name = (
-                    modal.current_name
-                )
+        try:
 
-                self.update_profile()
+            update_user_name(
+                name
+            )
 
-        main_window = QApplication.activeWindow()
+            self.user_name = name
+
+            self.profile_name_label.setText(
+                name
+            )
+
+            self.profile_avatar.setText(
+                self.get_avatar_letter()
+            )
+
+            self.window().close_modal()
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                (
+                    "Could not update profile:\n\n"
+                    f"{error}"
+                ),
+            )
+
+    # =====================================================
+    # Date format
+    # =====================================================
+
+    def open_date_format(
+        self,
+    ) -> None:
+
+        modal = SettingsOptionModal(
+            title="Date format",
+            subtitle=(
+                "Choose how dates are displayed "
+                "throughout Octumo."
+            ),
+            options=[
+                "DD.MM.YYYY",
+                "DD/MM/YYYY",
+                "YYYY-MM-DD",
+            ],
+            current_value=self.date_format,
+            parent=self,
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.save_date_format(modal)
+        )
+
+        modal.cancelled.connect(
+            self.close_current_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def save_date_format(
+        self,
+        modal: SettingsOptionModal,
+    ) -> None:
+
+        selected = modal.selected_value
+
+        if not selected:
+            return
+
+        try:
+
+            update_date_format(
+                selected
+            )
+
+            self.date_format = selected
+
+            self.date_format_row.set_value(
+                selected
+            )
+
+            self.window().close_modal()
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                (
+                    "Could not update date format:\n\n"
+                    f"{error}"
+                ),
+            )
+
+    # =====================================================
+    # First day of week
+    # =====================================================
+
+    def open_first_day_of_week(
+        self,
+    ) -> None:
+
+        modal = SettingsOptionModal(
+            title="First day of week",
+            subtitle=(
+                "Choose which day starts the week "
+                "throughout Octumo."
+            ),
+            options=[
+                "Monday",
+                "Sunday",
+            ],
+            current_value=self.first_day_of_week,
+            parent=self,
+        )
+
+        modal.submitted.connect(
+            lambda:
+            self.save_first_day_of_week(modal)
+        )
+
+        modal.cancelled.connect(
+            self.close_current_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    def save_first_day_of_week(
+        self,
+        modal: SettingsOptionModal,
+    ) -> None:
+
+        selected = modal.selected_value
+
+        if not selected:
+            return
+
+        try:
+
+            update_first_day_of_week(
+                selected
+            )
+
+            self.first_day_of_week = selected
+
+            self.first_day_row.set_value(
+                selected
+            )
+
+            self.window().close_modal()
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                (
+                    "Could not update first day "
+                    "of week:\n\n"
+                    f"{error}"
+                ),
+            )
+
+    # =====================================================
+    # Close modal
+    # =====================================================
+
+    def close_current_modal(
+        self,
+    ) -> None:
+
+        self.window().close_modal()
+
+    # =====================================================
+    # Backup & restore
+    # =====================================================
+
+    def backup_and_restore(
+        self,
+    ) -> None:
+
+        modal = BackupRestoreModal(
+            parent=self
+        )
+
+        modal.create_backup_requested.connect(
+            lambda:
+            self.start_create_backup(modal)
+        )
+
+        modal.restore_requested.connect(
+            lambda:
+            self.start_restore_backup(modal)
+        )
+
+        modal.cancelled.connect(
+            self.close_current_modal
+        )
+
+        self.window().show_modal(
+            modal
+        )
+
+    # =====================================================
+    # Start create backup
+    # =====================================================
+
+    def start_create_backup(
+        self,
+        modal: BackupRestoreModal,
+    ) -> None:
+
+        self.window().close_modal()
+
+        self.create_backup()
+
+    # =====================================================
+    # Start restore
+    # =====================================================
+
+    def start_restore_backup(
+        self,
+        modal: BackupRestoreModal,
+    ) -> None:
+
+        self.window().close_modal()
+
+        self.restore_backup()
+
+    # =====================================================
+    # Create backup
+    # =====================================================
+
+    def create_backup(
+        self,
+    ) -> None:
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Create Octumo backup",
+            "octumo-backup.json",
+            "Octumo Backup (*.json)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+
+            export_database(
+                file_path
+            )
+
+            QMessageBox.information(
+                self,
+                "Backup complete",
+                (
+                    "Your Octumo backup has been "
+                    "created successfully."
+                ),
+            )
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Backup failed",
+                (
+                    "Could not create backup:\n\n"
+                    f"{error}"
+                ),
+            )
+
+    # =====================================================
+    # Restore backup
+    # =====================================================
+
+    def restore_backup(
+        self,
+    ) -> None:
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Restore Octumo backup",
+            "",
+            "Octumo Backup (*.json)",
+        )
+
+        if not file_path:
+            return
+
+        answer = QMessageBox.warning(
+            self,
+            "Restore backup",
+            (
+                "Restoring this backup will replace "
+                "your current Octumo data.\n\n"
+                "This action cannot be undone.\n\n"
+                "Do you want to continue?"
+            ),
+            (
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No
+            ),
+            QMessageBox.StandardButton.No,
+        )
 
         if (
-            main_window is not None
-            and main_window.modal_overlay is not None
+            answer
+            != QMessageBox.StandardButton.Yes
         ):
+            return
 
-            main_window.close_modal()
+        try:
+
+            restore_database(
+                file_path
+            )
+
+            self.user_name = get_user_name()
+
+            self.date_format = (
+                get_date_format()
+            )
+
+            self.first_day_of_week = (
+                get_first_day_of_week()
+            )
+
+            self.refresh_settings_ui()
+
+            QMessageBox.information(
+                self,
+                "Restore complete",
+                (
+                    "Your Octumo backup has been "
+                    "restored successfully."
+                ),
+            )
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Restore failed",
+                (
+                    "Could not restore the backup:\n\n"
+                    f"{error}"
+                ),
+            )
 
     # =====================================================
-    # Update profile
+    # Export
     # =====================================================
 
-    def update_profile(self) -> None:
+    def export_data(
+        self,
+    ) -> None:
 
-        self.profile_name.setText(
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Octumo data",
+            "octumo-export.json",
+            "Octumo Backup (*.json)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+
+            export_database(
+                file_path
+            )
+
+            QMessageBox.information(
+                self,
+                "Export complete",
+                (
+                    "Your Octumo data has been "
+                    "successfully exported."
+                ),
+            )
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Export failed",
+                (
+                    "Could not export your data:\n\n"
+                    f"{error}"
+                ),
+            )
+
+    # =====================================================
+    # Refresh Settings UI
+    # =====================================================
+
+    def refresh_settings_ui(
+        self,
+    ) -> None:
+
+        self.profile_name_label.setText(
             self.user_name
         )
 
-        self.avatar.setText(
-            self.get_initial()
+        self.profile_avatar.setText(
+            self.get_avatar_letter()
         )
 
-    # =====================================================
-    # Initial
-    # =====================================================
+        self.date_format_row.set_value(
+            self.date_format
+        )
 
-    def get_initial(self) -> str:
-
-        if not self.user_name:
-            return "S"
-
-        return self.user_name[
-            0
-        ].upper()
+        self.first_day_row.set_value(
+            self.first_day_of_week
+        )

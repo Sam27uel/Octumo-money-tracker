@@ -51,7 +51,7 @@ class EditProfileModal(Modal):
         )
 
         # =================================================
-        # Name container
+        # Container
         # =================================================
 
         name_container = QWidget()
@@ -84,18 +84,6 @@ class EditProfileModal(Modal):
         )
 
         # =================================================
-        # Signals
-        # =================================================
-
-        self.submitted.connect(
-            self.handle_submit
-        )
-
-        self.name_input.returnPressed.connect(
-            self.submit
-        )
-
-        # =================================================
         # Focus
         # =================================================
 
@@ -103,25 +91,10 @@ class EditProfileModal(Modal):
 
         self.name_input.selectAll()
 
-    # =====================================================
-    # Submit
-    # =====================================================
+        # =================================================
+        # Enter
+        # =================================================
 
-    def handle_submit(self) -> None:
-
-        name = (
-            self.name_input
-            .text()
-            .strip()
+        self.name_input.returnPressed.connect(
+            self.submit
         )
-
-        # Do not close modal when empty
-        if not name:
-            self.name_input.setFocus()
-            return
-
-        self.current_name = name
-
-        # Existing Octumo modal system uses
-        # cancelled to close the modal overlay.
-        self.cancelled.emit()
