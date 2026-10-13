@@ -2257,7 +2257,7 @@ class DashboardView(QWidget):
                 format_signed_money(
                     self.month_net
                 ),
-                "Income − expenses",
+                "Income − Expenses",
                 (
                     "positive"
                     if self.month_net >= 0
