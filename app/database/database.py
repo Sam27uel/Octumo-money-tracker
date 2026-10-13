@@ -1,12 +1,70 @@
 from pathlib import Path
+import shutil
 import sqlite3
+import sys
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-DATA_DIRECTORY = PROJECT_ROOT / "data"
+
+def get_data_directory() -> Path:
+    """
+    Return the appropriate data directory.
+
+    Development:
+        <project>/data
+
+    Packaged macOS application:
+        ~/Library/Application Support/Octumo
+    """
+
+    if getattr(sys, "frozen", False):
+        if sys.platform == "darwin":
+            return (
+                Path.home()
+                / "Library"
+                / "Application Support"
+                / "Octumo"
+            )
+
+        return Path.home() / ".octumo"
+
+    return PROJECT_ROOT / "data"
+
+
+DATA_DIRECTORY = get_data_directory()
 
 DATABASE_PATH = DATA_DIRECTORY / "octumo.db"
+
+
+def migrate_existing_database() -> None:
+    """
+    Copy the existing development database into the application
+    data directory on the first launch of the packaged application.
+
+    Never overwrite an existing destination database.
+    """
+
+    if not getattr(sys, "frozen", False):
+        return
+
+    if DATABASE_PATH.exists():
+        return
+
+    legacy_database = PROJECT_ROOT / "data" / "octumo.db"
+
+    if not legacy_database.exists():
+        return
+
+    DATA_DIRECTORY.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    shutil.copy2(
+        legacy_database,
+        DATABASE_PATH,
+    )
 
 
 def get_connection() -> sqlite3.Connection:
@@ -14,6 +72,8 @@ def get_connection() -> sqlite3.Connection:
         parents=True,
         exist_ok=True,
     )
+
+    migrate_existing_database()
 
     connection = sqlite3.connect(
         DATABASE_PATH
@@ -26,7 +86,6 @@ def get_connection() -> sqlite3.Connection:
     )
 
     return connection
-
 
 def initialize_database() -> None:
 
