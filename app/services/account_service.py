@@ -10,10 +10,14 @@ def create_account(
     clean_name = name.strip()
 
     if not clean_name:
-        raise ValueError("Account name cannot be empty.")
+        raise ValueError(
+            "Account name cannot be empty."
+        )
 
     if starting_balance_cents < 0:
-        raise ValueError("Starting balance cannot be negative.")
+        raise ValueError(
+            "Starting balance cannot be negative."
+        )
 
     with get_connection() as connection:
         cursor = connection.execute(
@@ -25,7 +29,10 @@ def create_account(
             )
             VALUES (?, ?, 1)
             """,
-            (clean_name, starting_balance_cents),
+            (
+                clean_name,
+                starting_balance_cents,
+            ),
         )
 
         return cursor.lastrowid
@@ -58,7 +65,9 @@ def list_accounts(
         ).fetchall()
 
 
-def get_account(account_id: int) -> sqlite3.Row | None:
+def get_account(
+    account_id: int,
+) -> sqlite3.Row | None:
     with get_connection() as connection:
         return connection.execute(
             """
@@ -71,7 +80,9 @@ def get_account(account_id: int) -> sqlite3.Row | None:
             FROM accounts
             WHERE id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         ).fetchone()
 
 
@@ -82,7 +93,9 @@ def rename_account(
     clean_name = new_name.strip()
 
     if not clean_name:
-        raise ValueError("Account name cannot be empty.")
+        raise ValueError(
+            "Account name cannot be empty."
+        )
 
     with get_connection() as connection:
         connection.execute(
@@ -91,11 +104,16 @@ def rename_account(
             SET name = ?
             WHERE id = ?
             """,
-            (clean_name, account_id),
+            (
+                clean_name,
+                account_id,
+            ),
         )
 
 
-def archive_account(account_id: int) -> None:
+def archive_account(
+    account_id: int,
+) -> None:
     with get_connection() as connection:
         connection.execute(
             """
@@ -103,11 +121,15 @@ def archive_account(account_id: int) -> None:
             SET is_active = 0
             WHERE id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         )
 
 
-def restore_account(account_id: int) -> None:
+def restore_account(
+    account_id: int,
+) -> None:
     with get_connection() as connection:
         connection.execute(
             """
@@ -115,43 +137,88 @@ def restore_account(account_id: int) -> None:
             SET is_active = 1
             WHERE id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         )
 
 
-def delete_account_permanently(account_id: int) -> None:
+def delete_account_permanently(
+    account_id: int,
+) -> None:
+    """
+    Permanently delete an account and all data
+    belonging to that account.
+
+    The deletion order is important because
+    foreign-key constraints are enabled.
+    """
+
     with get_connection() as connection:
-        # Delete transactions first because the existing
-        # transactions table does not use ON DELETE CASCADE.
+
+        # -------------------------------------------------
+        # Delete recurring transaction templates first.
+        # -------------------------------------------------
+
+        connection.execute(
+            """
+            DELETE FROM recurring_transactions
+            WHERE account_id = ?
+            """,
+            (
+                account_id,
+            ),
+        )
+
+        # -------------------------------------------------
+        # Delete normal transactions.
+        # -------------------------------------------------
+
         connection.execute(
             """
             DELETE FROM transactions
             WHERE account_id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         )
 
-        # Balance adjustments are already configured with
-        # ON DELETE CASCADE, but deleting them explicitly
-        # keeps this operation clear and safe.
+        # -------------------------------------------------
+        # Delete balance adjustments.
+        # -------------------------------------------------
+
         connection.execute(
             """
             DELETE FROM balance_adjustments
             WHERE account_id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         )
+
+        # -------------------------------------------------
+        # Finally delete the account itself.
+        # -------------------------------------------------
 
         connection.execute(
             """
             DELETE FROM accounts
             WHERE id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         )
 
-def delete_account(account_id: int) -> None:
-    delete_account_permanently(account_id)
+
+def delete_account(
+    account_id: int,
+) -> None:
+    delete_account_permanently(
+        account_id
+    )
 
 
 def add_balance_adjustment(
@@ -161,7 +228,9 @@ def add_balance_adjustment(
     note: str = "",
 ) -> int:
     if amount_cents == 0:
-        raise ValueError("Adjustment amount cannot be zero.")
+        raise ValueError(
+            "Adjustment amount cannot be zero."
+        )
 
     with get_connection() as connection:
         cursor = connection.execute(
@@ -185,38 +254,57 @@ def add_balance_adjustment(
         return cursor.lastrowid
 
 
-def get_current_balance(account_id: int) -> int:
+def get_current_balance(
+    account_id: int,
+) -> int:
     with get_connection() as connection:
+
         account = connection.execute(
             """
             SELECT starting_balance_cents
             FROM accounts
             WHERE id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         ).fetchone()
 
         if account is None:
-            raise ValueError("Account not found.")
+            raise ValueError(
+                "Account not found."
+            )
 
-        starting_balance = account["starting_balance_cents"]
+        starting_balance = (
+            account["starting_balance_cents"]
+        )
 
         transaction_total = connection.execute(
             """
-            SELECT COALESCE(SUM(amount_cents), 0) AS total
+            SELECT COALESCE(
+                SUM(amount_cents),
+                0
+            ) AS total
             FROM transactions
             WHERE account_id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         ).fetchone()["total"]
 
         adjustment_total = connection.execute(
             """
-            SELECT COALESCE(SUM(amount_cents), 0) AS total
+            SELECT COALESCE(
+                SUM(amount_cents),
+                0
+            ) AS total
             FROM balance_adjustments
             WHERE account_id = ?
             """,
-            (account_id,),
+            (
+                account_id,
+            ),
         ).fetchone()["total"]
 
         return (
@@ -224,6 +312,7 @@ def get_current_balance(account_id: int) -> int:
             + transaction_total
             + adjustment_total
         )
+
 
 def list_balance_adjustments(
     account_id: int,
@@ -240,7 +329,11 @@ def list_balance_adjustments(
                 created_at
             FROM balance_adjustments
             WHERE account_id = ?
-            ORDER BY adjustment_date DESC, id DESC
+            ORDER BY
+                adjustment_date DESC,
+                id DESC
             """,
-            (account_id,),
-        ).fetchall()   
+            (
+                account_id,
+            ),
+        ).fetchall()
