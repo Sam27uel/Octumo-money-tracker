@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
-        self.setWindowTitle("Octumo")
+        self.setWindowTitle("Octumo Money Tracker")
         self.resize(1100, 700)
         self.setMinimumSize(900, 600)
 

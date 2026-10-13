@@ -1489,6 +1489,9 @@ class DashboardView(QWidget):
         previous_button.setObjectName(
             "month_arrow"
         )
+        previous_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
 
         previous_button.setFixedSize(
             34,
@@ -1508,6 +1511,9 @@ class DashboardView(QWidget):
 
         next_button.setObjectName(
             "month_arrow"
+        )
+        next_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
         )
 
         next_button.setFixedSize(
