@@ -1,4 +1,4 @@
-# 🐙 Octumo Money Tracker
+# 🐙🐙 Octumo Money Tracker 🐙🐙
 
 A desktop application for personal finance management, built with Python and PySide6.
 
